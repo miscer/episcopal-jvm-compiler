@@ -1,3 +1,7 @@
+package episcopal.continuous;
+
+import episcopal.continuous.ContinuousDistribution;
+
 public class NormalDistribution extends ContinuousDistribution {
     private float m;
     private float sd;

@@ -1,3 +1,7 @@
+package episcopal;
+
+import episcopal.discrete.DiscreteSample;
+
 public class Operators {
 
     public static DiscreteSample<Boolean> and(DiscreteSample<Boolean> left, DiscreteSample<Boolean> right) {

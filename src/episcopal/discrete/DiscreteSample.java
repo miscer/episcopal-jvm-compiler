@@ -1,3 +1,7 @@
+package episcopal.discrete;
+
+import episcopal.Sample;
+
 import java.util.*;
 import java.util.stream.Collectors;
 

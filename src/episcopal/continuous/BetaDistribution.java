@@ -1,3 +1,5 @@
+package episcopal.continuous;
+
 public class BetaDistribution extends ContinuousDistribution {
     private float a, b;
 

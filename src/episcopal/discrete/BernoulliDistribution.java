@@ -1,3 +1,7 @@
+package episcopal.discrete;
+
+import episcopal.Distribution;
+
 public class BernoulliDistribution implements Distribution {
     private float p;
 

@@ -1,3 +1,8 @@
+package episcopal.discrete;
+
+import episcopal.Distribution;
+import episcopal.discrete.DiscreteSample;
+
 public class FlipDistribution implements Distribution {
     private float p;
 

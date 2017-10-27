@@ -1,3 +1,8 @@
+package episcopal.continuous;
+
+import episcopal.Sample;
+import episcopal.discrete.DiscreteSample;
+
 public class ContinuousSample implements Sample {
     private float a;
     private float b;

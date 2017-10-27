@@ -1,3 +1,8 @@
+package episcopal;
+
+import episcopal.Operators;
+import episcopal.discrete.DiscreteSample;
+
 import static org.junit.Assert.*;
 
 public class OperatorsTest {

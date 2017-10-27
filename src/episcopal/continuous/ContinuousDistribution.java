@@ -1,7 +1,11 @@
+package episcopal.continuous;
+
+import episcopal.Distribution;
+
 public abstract class ContinuousDistribution implements Distribution {
     public ContinuousSample sample() {
         return new ContinuousSample(this);
     }
 
-    abstract float cumulative(float n);
+    abstract public float cumulative(float n);
 }
