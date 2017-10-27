@@ -1,2 +1,2 @@
-public abstract class Sample {
+public interface Sample {
 }
