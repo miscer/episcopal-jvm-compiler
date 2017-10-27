@@ -29,7 +29,6 @@ data Expression = ExpConst Constant
 
 data Constant = ConstInt Int
               | ConstFloat Float
-              | ConstPercent Float
               | ConstBool Bool
                 deriving Show
 
