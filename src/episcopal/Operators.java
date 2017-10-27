@@ -1,5 +1,6 @@
 package episcopal;
 
+import episcopal.continuous.ContinuousSample;
 import episcopal.discrete.DiscreteSample;
 
 public class Operators {
@@ -10,6 +11,10 @@ public class Operators {
 
     public static DiscreteSample<Boolean> or(DiscreteSample<Boolean> left, DiscreteSample<Boolean> right) {
         return combine(left, right, (a, b) -> a || b);
+    }
+
+    public static DiscreteSample<Boolean> not(DiscreteSample<Boolean> sample) {
+        return new DiscreteSample<Boolean>().add(true, sample.get(false)).add(false, sample.get(true));
     }
 
     public static DiscreteSample<Integer> addIntegers(DiscreteSample<Integer> left, DiscreteSample<Integer> right) {
@@ -77,7 +82,7 @@ public class Operators {
     }
 
     private static <T, U, V> DiscreteSample<T> combine(DiscreteSample<U> left, DiscreteSample<V> right, Operator<T, U, V> operator) {
-        DiscreteSample<T> result = new DiscreteSample<>();
+        DiscreteSample<T> result = new DiscreteSample<T>();
 
         for (U a : left.values()) {
             for (V b : right.values()) {

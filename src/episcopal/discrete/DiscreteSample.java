@@ -15,8 +15,8 @@ public class DiscreteSample<T> implements Sample {
     }
 
     public DiscreteSample<T> add(T value, float probability) {
-    values.put(value, get(value) + probability);
-    return this;
+        values.put(value, get(value) + probability);
+        return this;
     }
 
     public float get(T value) {
