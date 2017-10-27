@@ -6,8 +6,8 @@ public class FlipDistribution implements Distribution {
     }
 
     @Override
-    public Result<Boolean> sample() {
-        Result<Boolean> result = new Result<>();
+    public DiscreteSample<Boolean> sample() {
+        DiscreteSample<Boolean> result = new DiscreteSample<>();
         result.add(true, p);
         result.add(false, 1 - p);
         return result;

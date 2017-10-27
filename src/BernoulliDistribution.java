@@ -6,8 +6,8 @@ public class BernoulliDistribution implements Distribution {
     }
 
     @Override
-    public Result<Integer> sample() {
-        Result<Integer> result = new Result<>();
+    public DiscreteSample<Integer> sample() {
+        DiscreteSample<Integer> result = new DiscreteSample<>();
         result.add(1, p);
         result.add(0, 1 - p);
         return result;

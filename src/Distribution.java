@@ -1,3 +1,3 @@
 public interface Distribution {
-  public Result sample();
+  public DiscreteSample sample();
 }

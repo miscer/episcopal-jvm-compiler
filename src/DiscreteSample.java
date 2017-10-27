@@ -1,16 +1,16 @@
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class Result<T> {
+public class DiscreteSample<T> {
     private Map<T, Float> values = new HashMap<>();
 
-    public static <T> Result<T> create(T value) {
-      Result<T> result = new Result<>();
+    public static <T> DiscreteSample<T> create(T value) {
+      DiscreteSample<T> result = new DiscreteSample<>();
       result.add(value, 1);
       return result;
     }
 
-    public Result<T> add(T value, float probability) {
+    public DiscreteSample<T> add(T value, float probability) {
     values.put(value, get(value) + probability);
     return this;
     }
@@ -30,6 +30,6 @@ public class Result<T> {
                 .map(entry -> String.format("%s %d%%", entry.getKey(), (int)(entry.getValue() * 100)))
                 .collect(Collectors.joining("; "));
 
-        return String.format("Result{%s}", content);
+        return String.format("DiscreteSample{%s}", content);
     }
 }

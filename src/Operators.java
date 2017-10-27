@@ -1,70 +1,70 @@
 public class Operators {
 
-    public static Result<Boolean> and(Result<Boolean> left, Result<Boolean> right) {
+    public static DiscreteSample<Boolean> and(DiscreteSample<Boolean> left, DiscreteSample<Boolean> right) {
         return combine(left, right, (a, b) -> a && b);
     }
 
-    public static Result<Boolean> or(Result<Boolean> left, Result<Boolean> right) {
+    public static DiscreteSample<Boolean> or(DiscreteSample<Boolean> left, DiscreteSample<Boolean> right) {
         return combine(left, right, (a, b) -> a || b);
     }
 
-    public static Result<Integer> addIntegers(Result<Integer> left, Result<Integer> right) {
+    public static DiscreteSample<Integer> addIntegers(DiscreteSample<Integer> left, DiscreteSample<Integer> right) {
         return combine(left, right, (a, b) -> a + b);
     }
 
-    public static Result<Float> addFloats(Result<Float> left, Result<Float> right) {
+    public static DiscreteSample<Float> addFloats(DiscreteSample<Float> left, DiscreteSample<Float> right) {
         return combine(left, right, (a, b) -> a + b);
     }
 
-    public static Result<Integer> subtractIntegers(Result<Integer> left, Result<Integer> right) {
+    public static DiscreteSample<Integer> subtractIntegers(DiscreteSample<Integer> left, DiscreteSample<Integer> right) {
         return combine(left, right, (a, b) -> a - b);
     }
 
-    public static Result<Float> subtractFloats(Result<Float> left, Result<Float> right) {
+    public static DiscreteSample<Float> subtractFloats(DiscreteSample<Float> left, DiscreteSample<Float> right) {
         return combine(left, right, (a, b) -> a - b);
     }
 
-    public static Result<Integer> multiplyIntegers(Result<Integer> left, Result<Integer> right) {
+    public static DiscreteSample<Integer> multiplyIntegers(DiscreteSample<Integer> left, DiscreteSample<Integer> right) {
         return combine(left, right, (a, b) -> a * b);
     }
 
-    public static Result<Float> multiplyFloats(Result<Float> left, Result<Float> right) {
+    public static DiscreteSample<Float> multiplyFloats(DiscreteSample<Float> left, DiscreteSample<Float> right) {
         return combine(left, right, (a, b) -> a * b);
     }
 
-    public static Result<Integer> divideIntegers(Result<Integer> left, Result<Integer> right) {
+    public static DiscreteSample<Integer> divideIntegers(DiscreteSample<Integer> left, DiscreteSample<Integer> right) {
         return combine(left, right, (a, b) -> a / b);
     }
 
-    public static Result<Float> divideFloats(Result<Float> left, Result<Float> right) {
+    public static DiscreteSample<Float> divideFloats(DiscreteSample<Float> left, DiscreteSample<Float> right) {
         return combine(left, right, (a, b) -> a / b);
     }
 
-    public static Result<Boolean> equalIntegers(Result<Integer> left, Result<Integer> right) {
+    public static DiscreteSample<Boolean> equalIntegers(DiscreteSample<Integer> left, DiscreteSample<Integer> right) {
         return combine(left, right, Integer::equals);
     }
 
-    public static Result<Boolean> equalFloats(Result<Float> left, Result<Float> right) {
+    public static DiscreteSample<Boolean> equalFloats(DiscreteSample<Float> left, DiscreteSample<Float> right) {
         return combine(left, right, Float::equals);
     }
 
-    public static Result<Boolean> equalBooleans(Result<Boolean> left, Result<Boolean> right) {
+    public static DiscreteSample<Boolean> equalBooleans(DiscreteSample<Boolean> left, DiscreteSample<Boolean> right) {
         return combine(left, right, Boolean::equals);
     }
 
-    public static Result<Boolean> lessThanIntegers(Result<Integer> left, Result<Integer> right) {
+    public static DiscreteSample<Boolean> lessThanIntegers(DiscreteSample<Integer> left, DiscreteSample<Integer> right) {
         return combine(left, right, (a, b) -> a < b);
     }
 
-    public static Result<Boolean> lessThanFloats(Result<Float> left, Result<Float> right) {
+    public static DiscreteSample<Boolean> lessThanFloats(DiscreteSample<Float> left, DiscreteSample<Float> right) {
         return combine(left, right, (a, b) -> a < b);
     }
 
-    public static Result<Boolean> greaterThanIntegers(Result<Integer> left, Result<Integer> right) {
+    public static DiscreteSample<Boolean> greaterThanIntegers(DiscreteSample<Integer> left, DiscreteSample<Integer> right) {
         return combine(left, right, (a, b) -> a > b);
     }
 
-    public static Result<Boolean> greaterThanFloats(Result<Float> left, Result<Float> right) {
+    public static DiscreteSample<Boolean> greaterThanFloats(DiscreteSample<Float> left, DiscreteSample<Float> right) {
         return combine(left, right, (a, b) -> a > b);
     }
 
@@ -72,8 +72,8 @@ public class Operators {
         T combine(U a, V b);
     }
 
-    private static <T, U, V> Result<T> combine(Result<U> left, Result<V> right, Operator<T, U, V> operator) {
-        Result<T> result = new Result<>();
+    private static <T, U, V> DiscreteSample<T> combine(DiscreteSample<U> left, DiscreteSample<V> right, Operator<T, U, V> operator) {
+        DiscreteSample<T> result = new DiscreteSample<>();
 
         for (U a : left.values()) {
             for (V b : right.values()) {
