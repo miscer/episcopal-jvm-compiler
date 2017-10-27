@@ -1,6 +1,8 @@
 package episcopal;
 
 import episcopal.Operators;
+import episcopal.continuous.ContinuousSample;
+import episcopal.continuous.NormalDistribution;
 import episcopal.discrete.DiscreteSample;
 
 import static org.junit.Assert.*;
@@ -40,6 +42,26 @@ public class OperatorsTest {
 
         assertEquals(result.get(true), 0.3 * 0.2 + 0.3 * 0.8 + 0.7 * 0.2, 0.001);
         assertEquals(result.get(false), 0.7 * 0.8, 0.001);
+    }
+
+    @org.junit.Test
+    public void testSingleContinuousLessThan() throws Exception {
+        ContinuousSample left = new NormalDistribution(100, 15).sample();
+        DiscreteSample<Float> right = DiscreteSample.create(100f);
+        DiscreteSample<Boolean> result = Operators.lessThanFloats(left, right);
+
+        assertEquals(result.get(true), 0.5, 0.001);
+        assertEquals(result.get(false), 0.5, 0.001);
+    }
+
+    @org.junit.Test
+    public void testMultipleContinuousLessThan() throws Exception {
+        ContinuousSample left = new NormalDistribution(100, 15).sample();
+        DiscreteSample<Float> right = new DiscreteSample<Float>().add(70f, 0.3f).add(130f, 0.7f);
+        DiscreteSample<Boolean> result = Operators.lessThanFloats(left, right);
+
+        assertEquals(0.6908, result.get(true), 0.001);
+        assertEquals(0.3092, result.get(false), 0.001);
     }
 
 }

@@ -69,6 +69,20 @@ public class Operators {
         return combine(left, right, (a, b) -> a < b);
     }
 
+    public static DiscreteSample<Boolean> lessThanFloats(ContinuousSample left, DiscreteSample<Float> right) {
+        DiscreteSample<Boolean> result = new DiscreteSample<Boolean>();
+
+        for (Float a : right.values()) {
+            DiscreteSample<Boolean> c = left.cumulative(a);
+
+            for (Boolean b : c.values()) {
+                result.add(b, right.get(a) * c.get(b));
+            }
+        }
+
+        return result;
+    }
+
     public static DiscreteSample<Boolean> greaterThanIntegers(DiscreteSample<Integer> left, DiscreteSample<Integer> right) {
         return combine(left, right, (a, b) -> a > b);
     }
