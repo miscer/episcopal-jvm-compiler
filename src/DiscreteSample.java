@@ -1,7 +1,7 @@
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class DiscreteSample<T> {
+public class DiscreteSample<T> extends Sample {
     private Map<T, Float> values = new HashMap<>();
 
     public static <T> DiscreteSample<T> create(T value) {
