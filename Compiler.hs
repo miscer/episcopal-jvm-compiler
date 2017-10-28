@@ -2,8 +2,6 @@ module Compiler (compile) where
 
 import Syntax
 
-type Instruction = String
-
 -- Stack
 
 data Stack = Stack { currentStackSize :: Int, maxStackSize :: Int }
@@ -21,30 +19,42 @@ shrinkStack n (Stack {currentStackSize = c, maxStackSize = m})
   | c >= n = Stack { currentStackSize = c - n, maxStackSize = m }
   | otherwise = error "Shrinking stack beyond its size"
 
--- Environment
-
-data Environment = Environment { stack :: Stack }
-                   deriving (Show)
-
-emptyEnvironment :: Environment
-emptyEnvironment = Environment { stack = emptyStack }
-
 -- Compiler
 
-indent :: [Instruction] -> [Instruction]
+type Line = String
+type Prototype = String
+
+data Output = Output [Line] Stack
+              deriving (Show)
+
+emptyOutput :: Output
+emptyOutput = Output [] emptyStack
+
+type Instruction = Output -> Output
+
+instr :: Line -> (Stack -> Stack) -> Instruction
+instr instruction updateStack (Output instructions stack) = Output instructions' stack'
+  where instructions' = instructions ++ [instruction]
+        stack' = updateStack stack
+
+exec :: [Instruction] -> Instruction
+exec (instruction:[]) = instruction
+exec (instruction:next) = (exec next) . instruction
+
+indent :: [Line] -> [Line]
 indent is = ["  " ++ i | i <- is]
 
-compile :: Program -> [Instruction]
+compile :: Program -> [Line]
 compile program = concat [classHeader program,
                           mainMethod program,
                           initMethod,
                           runMethod program]
 
-classHeader :: Program -> [Instruction]
+classHeader :: Program -> [Line]
 classHeader (Program name _ _) = [".class public " ++ name,
                                   ".super episcopal/Program"]
 
-mainMethod :: Program -> [Instruction]
+mainMethod :: Program -> [Line]
 mainMethod (Program name _ _) = concat [[".method static public main([Ljava/lang/String;)V"],
                                         [".limit stack 2"],
                                         indent ["new " ++ name,
@@ -54,7 +64,7 @@ mainMethod (Program name _ _) = concat [[".method static public main([Ljava/lang
                                                 "return"],
                                         [".end method"]]
 
-initMethod :: [Instruction]
+initMethod :: [Line]
 initMethod = concat [[".method public <init>()V"],
                      [".limit stack 1"],
                      indent ["aload_0",
@@ -62,28 +72,29 @@ initMethod = concat [[".method public <init>()V"],
                              "return"],
                      [".end method"]]
 
-compiledMethod :: String -> [Instruction] -> Environment -> [Instruction]
-compiledMethod prototype body environment = concat [[".method " ++ prototype],
-                                                    [".limit stack " ++ (show $ maxStackSize $ stack environment)],
-                                                    indent body,
-                                                    [".end method"]]
+runMethod :: Program -> [Line]
+runMethod (Program _ body _) = compileMethod "public run()Lepiscopal/Sample;" methodBody
+  where methodBody = exec [compileExpression body, instr "areturn" (shrinkStack 1)]
 
-runMethod :: Program -> [Instruction]
-runMethod (Program _ body _) = compiledMethod "public run()Lepiscopal/Sample;" (methodBody ++ ["areturn"]) emptyEnvironment
-                                 where methodBody = compileExpression body
+compileMethod :: Prototype -> Instruction -> [Line]
+compileMethod prototype instruction = concat [[".method " ++ prototype],
+                                              [".limit stack " ++ (show $ maxStackSize stack)],
+                                              indent body,
+                                              [".end method"]]
+  where (Output body stack) = instruction emptyOutput
 
-createDiscreteSample :: [Instruction]
-createDiscreteSample = ["invokestatic episcopal/discrete/DiscreteSample/create(Ljava/lang/Object;)Lepiscopal/discrete/DiscreteSample;"]
+createDiscreteSample :: Instruction
+createDiscreteSample = instr "invokestatic episcopal/discrete/DiscreteSample/create(Ljava/lang/Object;)Lepiscopal/discrete/DiscreteSample;" id
 
-compileExpression :: Expression -> [Instruction]
-compileExpression (ExpConst constant) = concat [compileConstant constant,
-                                                createDiscreteSample]
+compileExpression :: Expression -> Instruction
+compileExpression (ExpConst constant) = exec [compileConstant constant,
+                                              createDiscreteSample]
 
-compileConstant :: Constant -> [Instruction]
-compileConstant (ConstInt n) = ["ldc " ++ show n,
-                                "invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;"]
-compileConstant (ConstFloat n) = ["ldc " ++ show n,
-                                  "invokestatic java/lang/Float/valueOf(F)Ljava/lang/Float;"]
-compileConstant (ConstBool n) = [if n
-                                 then "getstatic java/lang/Boolean/TRUE Ljava/lang/Boolean;"
-                                 else "getstatic java/lang/Boolean/FALSE Ljava/lang/Boolean;"]
+compileConstant :: Constant -> Instruction
+compileConstant (ConstInt n) = exec [instr ("ldc " ++ show n) (expandStack 1),
+                                     instr "invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;" id]
+compileConstant (ConstFloat n) = exec [instr ("ldc " ++ show n) (expandStack 1),
+                                       instr "invokestatic java/lang/Integer/valueOf(F)Ljava/lang/Float;" id]
+compileConstant (ConstBool n) = if n
+                                  then instr "getstatic java/lang/Boolean/TRUE Ljava/lang/Boolean;" (expandStack 1)
+                                  else instr "getstatic java/lang/Boolean/FALSE Ljava/lang/Boolean;" (expandStack 1)
