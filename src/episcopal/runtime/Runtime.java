@@ -1,7 +1,9 @@
 package episcopal.runtime;
 
+import episcopal.Distribution;
 import episcopal.Operators;
 import episcopal.continuous.BetaDistribution;
+import episcopal.continuous.ContinuousDistribution;
 import episcopal.continuous.NormalDistribution;
 import episcopal.discrete.BernoulliDistribution;
 import episcopal.discrete.DiscreteSample;
@@ -226,6 +228,35 @@ public class Runtime {
         throw new RuntimeException("Unable to create Flip distribution");
     }
 
+    public static RuntimeValue sample(RuntimeValue value) throws RuntimeException {
+        if (isDistribution(value)) {
+            Distribution distribution = value.getDistribution();
+
+            if (distribution instanceof BernoulliDistribution) {
+                return new RuntimeValue(
+                        RuntimeValue.Type.DISCRETE_INT_SAMPLE,
+                        distribution.sample()
+                );
+            }
+
+            if (distribution instanceof FlipDistribution) {
+                return new RuntimeValue(
+                        RuntimeValue.Type.DISCRETE_FLOAT_SAMPLE,
+                        distribution.sample()
+                );
+            }
+
+            if (distribution instanceof ContinuousDistribution) {
+                return new RuntimeValue(
+                        RuntimeValue.Type.CONTINUOUS_SAMPLE,
+                        distribution.sample()
+                );
+            }
+        }
+
+        throw new RuntimeException("Unable to sample value");
+    }
+
     private static boolean isDiscreteIntSample(RuntimeValue value) {
         return value.getType() == RuntimeValue.Type.DISCRETE_INT_SAMPLE;
     }
@@ -236,6 +267,10 @@ public class Runtime {
 
     private static boolean isDiscreteBoolSample(RuntimeValue value) {
         return value.getType() == RuntimeValue.Type.DISCRETE_BOOL_SAMPLE;
+    }
+
+    private static boolean isDistribution(RuntimeValue value) {
+        return value.getType() == RuntimeValue.Type.DISTRIBUTION;
     }
 
     private static boolean isDiscreteIntSamples(RuntimeValue left, RuntimeValue right) {

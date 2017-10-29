@@ -90,6 +90,8 @@ compileExpression (ExpOp operator left right) = exec [compileExpression right,
                                                       compileExpression left,
                                                       compileOperator operator]
 compileExpression (ExpDist distribution) = compileDistribution distribution
+compileExpression (ExpSample expression) = exec [compileExpression expression,
+                                                 sampleDistribution]
 
 createDiscreteSample :: Instruction
 createDiscreteSample = instr "invokestatic episcopal/runtime/Runtime/constant(Ljava/lang/Object;)Lepiscopal/runtime/RuntimeValue;" id
@@ -131,3 +133,6 @@ compileDistribution (Normal m sd) = exec [compileExpression sd,
                                           instr "invokestatic episcopal/runtime/Runtime/normal(Lepiscopal/runtime/RuntimeValue;Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" (expandStack 1 . shrinkStack 2)]
 compileDistribution (Flip p) = exec [compileExpression p,
                                      instr "invokestatic episcopal/runtime/Runtime/flip(Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" id]
+
+sampleDistribution :: Instruction
+sampleDistribution = instr "invokestatic episcopal/runtime/Runtime/sample(Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" id
