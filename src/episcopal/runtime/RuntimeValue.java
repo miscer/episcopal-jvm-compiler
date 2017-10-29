@@ -1,12 +1,17 @@
 package episcopal.runtime;
 
+import episcopal.Distribution;
 import episcopal.Sample;
 import episcopal.continuous.ContinuousSample;
 import episcopal.discrete.DiscreteSample;
 
 public class RuntimeValue {
     public enum Type {
-        DISCRETE_BOOL_SAMPLE, DISCRETE_INT_SAMPLE, DISCRETE_FLOAT_SAMPLE, CONTINUOUS_SAMPLE
+        DISCRETE_BOOL_SAMPLE,
+        DISCRETE_INT_SAMPLE,
+        DISCRETE_FLOAT_SAMPLE,
+        CONTINUOUS_SAMPLE,
+        DISTRIBUTION,
     };
 
     private Type type;
@@ -39,6 +44,10 @@ public class RuntimeValue {
 
     public ContinuousSample getContinuousSample() {
         return (ContinuousSample) value;
+    }
+
+    public Distribution getDistribution() {
+        return (Distribution) value;
     }
 
     @Override

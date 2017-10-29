@@ -1,7 +1,11 @@
 package episcopal.runtime;
 
 import episcopal.Operators;
+import episcopal.continuous.BetaDistribution;
+import episcopal.continuous.NormalDistribution;
+import episcopal.discrete.BernoulliDistribution;
 import episcopal.discrete.DiscreteSample;
+import episcopal.discrete.FlipDistribution;
 
 public class Runtime {
 
@@ -176,16 +180,78 @@ public class Runtime {
         throw new RuntimeException("Comparing incompatible types");
     }
 
+    public static RuntimeValue bernoulli(RuntimeValue p) throws RuntimeException {
+        if (isDiscreteFloatSample(p) && hasSingleValue(p.getDiscreteFloatSample())) {
+            return new RuntimeValue(
+                    RuntimeValue.Type.DISTRIBUTION,
+                    new BernoulliDistribution(p.getDiscreteFloatSample().single())
+            );
+        }
+
+        throw new RuntimeException("Unable to create Bernoulli distribution");
+    }
+
+    public static RuntimeValue beta(RuntimeValue a, RuntimeValue b) throws RuntimeException {
+        if (isDiscreteFloatSample(a) && hasSingleValue(a.getDiscreteFloatSample()) &&
+                isDiscreteFloatSample(b) && hasSingleValue(b.getDiscreteFloatSample())) {
+            return new RuntimeValue(
+                    RuntimeValue.Type.DISTRIBUTION,
+                    new BetaDistribution(a.getDiscreteFloatSample().single(), b.getDiscreteFloatSample().single())
+            );
+        }
+
+        throw new RuntimeException("Unable to create Beta distribution");
+    }
+
+    public static RuntimeValue normal(RuntimeValue m, RuntimeValue sd) throws RuntimeException {
+        if (isDiscreteFloatSample(m) && hasSingleValue(m.getDiscreteFloatSample()) &&
+                isDiscreteFloatSample(sd) && hasSingleValue(sd.getDiscreteFloatSample())) {
+            return new RuntimeValue(
+                    RuntimeValue.Type.DISTRIBUTION,
+                    new NormalDistribution(m.getDiscreteFloatSample().single(), sd.getDiscreteFloatSample().single())
+            );
+        }
+
+        throw new RuntimeException("Unable to create Normal distribution");
+    }
+
+    public static RuntimeValue flip(RuntimeValue p) throws RuntimeException {
+        if (isDiscreteFloatSample(p) && hasSingleValue(p.getDiscreteFloatSample())) {
+            return new RuntimeValue(
+                    RuntimeValue.Type.DISTRIBUTION,
+                    new FlipDistribution(p.getDiscreteFloatSample().single())
+            );
+        }
+
+        throw new RuntimeException("Unable to create Flip distribution");
+    }
+
+    private static boolean isDiscreteIntSample(RuntimeValue value) {
+        return value.getType() == RuntimeValue.Type.DISCRETE_INT_SAMPLE;
+    }
+
+    private static boolean isDiscreteFloatSample(RuntimeValue value) {
+        return value.getType() == RuntimeValue.Type.DISCRETE_FLOAT_SAMPLE;
+    }
+
+    private static boolean isDiscreteBoolSample(RuntimeValue value) {
+        return value.getType() == RuntimeValue.Type.DISCRETE_BOOL_SAMPLE;
+    }
+
     private static boolean isDiscreteIntSamples(RuntimeValue left, RuntimeValue right) {
-        return left.getType() == RuntimeValue.Type.DISCRETE_INT_SAMPLE && right.getType() == RuntimeValue.Type.DISCRETE_INT_SAMPLE;
+        return isDiscreteIntSample(left) && isDiscreteIntSample(right);
     }
 
     private static boolean isDiscreteFloatSamples(RuntimeValue left, RuntimeValue right) {
-        return left.getType() == RuntimeValue.Type.DISCRETE_FLOAT_SAMPLE && right.getType() == RuntimeValue.Type.DISCRETE_FLOAT_SAMPLE;
+        return isDiscreteFloatSample(left) && isDiscreteFloatSample(right);
     }
 
     private static boolean isDiscreteBoolSamples(RuntimeValue left, RuntimeValue right) {
-        return left.getType() == RuntimeValue.Type.DISCRETE_BOOL_SAMPLE && right.getType() == RuntimeValue.Type.DISCRETE_BOOL_SAMPLE;
+        return isDiscreteBoolSample(left) && isDiscreteBoolSample(right);
+    }
+
+    private static boolean hasSingleValue(DiscreteSample<?> sample) {
+        return sample.single() != null;
     }
 
 }

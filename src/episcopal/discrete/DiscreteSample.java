@@ -24,7 +24,11 @@ public class DiscreteSample<T> implements Sample {
     }
 
     public Set<T> values() {
-      return values.keySet();
+        return values.keySet();
+    }
+
+    public T single() {
+        return values.size() == 1 ? values.keySet().iterator().next() : null;
     }
 
     @Override

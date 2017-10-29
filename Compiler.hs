@@ -89,6 +89,7 @@ compileExpression (ExpConst constant) = exec [compileConstant constant,
 compileExpression (ExpOp operator left right) = exec [compileExpression right,
                                                       compileExpression left,
                                                       compileOperator operator]
+compileExpression (ExpDist distribution) = compileDistribution distribution
 
 createDiscreteSample :: Instruction
 createDiscreteSample = instr "invokestatic episcopal/runtime/Runtime/constant(Ljava/lang/Object;)Lepiscopal/runtime/RuntimeValue;" id
@@ -118,3 +119,15 @@ compileOperator operator = instr instruction (expandStack 1 . shrinkStack 2)
   where descriptor = "(Lepiscopal/runtime/RuntimeValue;Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;"
         method = "episcopal/runtime/Runtime/" ++ (operatorMethodName operator)
         instruction = "invokestatic " ++ method ++ descriptor
+
+compileDistribution :: Distribution -> Instruction
+compileDistribution (Bernoulli p) = exec [compileExpression p,
+                                          instr "invokestatic episcopal/runtime/Runtime/bernoulli(Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" id]
+compileDistribution (Beta a b) = exec [compileExpression b,
+                                       compileExpression a,
+                                       instr "invokestatic episcopal/runtime/Runtime/beta(Lepiscopal/runtime/RuntimeValue;Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" (expandStack 1 . shrinkStack 2)]
+compileDistribution (Normal m sd) = exec [compileExpression sd,
+                                          compileExpression m,
+                                          instr "invokestatic episcopal/runtime/Runtime/normal(Lepiscopal/runtime/RuntimeValue;Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" (expandStack 1 . shrinkStack 2)]
+compileDistribution (Flip p) = exec [compileExpression p,
+                                     instr "invokestatic episcopal/runtime/Runtime/flip(Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" id]
