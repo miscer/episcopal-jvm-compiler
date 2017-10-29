@@ -89,6 +89,9 @@ createDiscreteSample = instr "invokestatic episcopal/discrete/DiscreteSample/cre
 compileExpression :: Expression -> Instruction
 compileExpression (ExpConst constant) = exec [compileConstant constant,
                                               createDiscreteSample]
+compileExpression (ExpOp operator left right) = exec [compileExpression right,
+                                                      compileExpression left,
+                                                      compileOperator operator]
 
 compileConstant :: Constant -> Instruction
 compileConstant (ConstInt n) = exec [instr ("ldc " ++ show n) (expandStack 1),
@@ -98,3 +101,20 @@ compileConstant (ConstFloat n) = exec [instr ("ldc " ++ show n) (expandStack 1),
 compileConstant (ConstBool n) = if n
                                   then instr "getstatic java/lang/Boolean/TRUE Ljava/lang/Boolean;" (expandStack 1)
                                   else instr "getstatic java/lang/Boolean/FALSE Ljava/lang/Boolean;" (expandStack 1)
+
+operatorMethodName :: Operator -> String
+operatorMethodName OpPlus = "add"
+operatorMethodName OpMinus = "subtract"
+operatorMethodName OpTimes = "multiply"
+operatorMethodName OpOver = "divide"
+operatorMethodName OpOr = "or"
+operatorMethodName OpAnd = "and"
+operatorMethodName OpLessThan = "lessThan"
+operatorMethodName OpGreaterThan = "greaterThan"
+operatorMethodName OpEqual = "equal"
+
+compileOperator :: Operator -> Instruction
+compileOperator operator = instr instruction (expandStack 1 . shrinkStack 2)
+  where descriptor = "(Lepiscopal/Sample;Lepiscopal/Sample;)Lepiscopal/Sample;"
+        method = "episcopal/Operators/" ++ (operatorMethodName operator)
+        instruction = "invokestatic " ++ method ++ descriptor
