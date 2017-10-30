@@ -27,6 +27,8 @@ type Prototype = String
 data Output = Output [Line] Stack
               deriving (Show)
 
+data Function = QueryFunction Id Int
+
 emptyOutput :: Output
 emptyOutput = Output [] emptyStack
 
@@ -48,6 +50,7 @@ compile :: Program -> [Line]
 compile program = concat [classHeader program,
                           mainMethod program,
                           initMethod,
+                          queryMethods program,
                           runMethod program]
 
 classHeader :: Program -> [Line]
@@ -71,6 +74,15 @@ initMethod = concat [[".method public <init>()V"],
                              "invokenonvirtual episcopal/runtime/Program/<init>()V",
                              "return"],
                      [".end method"]]
+
+queryMethods :: Program -> [Line]
+queryMethods (Program _ _ queries) = concat $ map queryMethod queries
+
+queryMethod :: Query -> [Line]
+queryMethod (Query name arguments body) = compileMethod methodPrototype methodBody
+  where methodPrototype = concat ["public ", name, "(", methodArguments, ")Lepiscopal/runtime/RuntimeValue;"]
+        methodArguments = concat $ replicate (length arguments) "Lepiscopal/runtime/RuntimeValue;"
+        methodBody = exec [compileExpression (head body), instr "areturn" (shrinkStack 1)]
 
 runMethod :: Program -> [Line]
 runMethod (Program _ body _) = compileMethod "public run()Lepiscopal/runtime/RuntimeValue;" methodBody
