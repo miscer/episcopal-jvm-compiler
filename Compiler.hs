@@ -172,12 +172,18 @@ sampleDistribution :: Instruction
 sampleDistribution = instr ("invokestatic " ++ (method "episcopal/runtime/Runtime/sample" 1)) id
 
 compileCall :: Id -> [Expression] -> Environment -> Instruction
-compileCall name arguments env@(Environment program _) = case lookupFunction name env of
-                                                           (Just function) -> exec [operands, compile function]
-                                                           Nothing -> error ("Function " ++ name ++ " does not exist")
-  where compile (QueryFunction _ arity) = instr ("invokevirtual " ++ (method (program ++ "/" ++ name) arity)) id
-        operands = exec [instr "aload_0" (expandStack 1),
-                         exec [compileExpression argument env | argument <- arguments]]
+compileCall name arguments env = case lookupFunction name env of
+                                   (Just function) -> case function of
+                                     (QueryFunction _ _) -> compileQueryCall function arguments env
+                                   Nothing -> error $ "Function " ++ name ++ " does not exist"
+
+compileQueryCall :: Function -> [Expression] -> Environment -> Instruction
+compileQueryCall function arguments env = exec [operands, object, call]
+  where operands = exec [compileExpression argument env | argument <- arguments]
+        object = instr "aload_0" (expandStack 1)
+        call = instr ("invokevirtual " ++ (method (program ++ "/" ++ name) arity)) (expandStack 1 . shrinkStack 1)
+        (QueryFunction name arity) = function
+        (Environment program _) = env
 
 compileLet :: [Definition] -> Expression -> Environment -> Instruction
 compileLet definitions expression (Environment name functions) = compileExpression expression env'
