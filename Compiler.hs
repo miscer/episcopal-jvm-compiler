@@ -96,21 +96,23 @@ queryMethods :: Program -> [Line]
 queryMethods program@(Program _ _ queries) = concat $ map (queryMethod program) queries
 
 queryMethod :: Program -> Query -> [Line]
-queryMethod program (Query name arguments body) = compileMethod methodPrototype methodBody
+queryMethod program (Query name arguments body) = compileMethod methodPrototype methodLocals methodBody
   where methodPrototype = "public " ++ (method name (length arguments))
+        methodLocals = (length arguments) + 1
         methodBody = exec [compileExpression (head body) (programEnvironment program),
                            instr "areturn" (shrinkStack 1)]
 
 runMethod :: Program -> [Line]
-runMethod program@(Program _ body _) = compileMethod "public run()Lepiscopal/runtime/RuntimeValue;" methodBody
+runMethod program@(Program _ body _) = compileMethod "public run()Lepiscopal/runtime/RuntimeValue;" 1 methodBody
   where methodBody = exec [compileExpression body (programEnvironment program),
                            instr "areturn" (shrinkStack 1)]
 
-compileMethod :: Prototype -> Instruction -> [Line]
-compileMethod prototype instruction = concat [[".method " ++ prototype],
-                                              [".limit stack " ++ (show $ maxStackSize stack)],
-                                              indent body,
-                                              [".end method"]]
+compileMethod :: Prototype -> Int -> Instruction -> [Line]
+compileMethod prototype locals instruction = concat [[".method " ++ prototype],
+                                                     [".limit stack " ++ (show $ maxStackSize stack)],
+                                                     [".limit locals " ++ (show locals)],
+                                                     indent body,
+                                                     [".end method"]]
   where (Output body stack) = instruction emptyOutput
 
 compileExpression :: Expression -> Environment -> Instruction
@@ -172,5 +174,5 @@ compileCall name arguments env@(Environment program _) = case lookupFunction nam
                                                            (Just function) -> exec [operands, compile function]
                                                            Nothing -> error ("Function " ++ name ++ " does not exist")
   where compile (QueryFunction _ arity) = instr ("invokevirtual " ++ (method (program ++ "/" ++ name) arity)) id
-        operands = exec [exec $ reverse [compileExpression argument env | argument <- arguments],
-                         instr "aload_0" (expandStack 1)]
+        operands = exec [instr "aload_0" (expandStack 1),
+                         exec [compileExpression argument env | argument <- arguments]]

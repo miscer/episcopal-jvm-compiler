@@ -121,7 +121,7 @@ public class Runtime {
         throw new RuntimeException("OR-ing incompatible types");
     }
 
-    public static RuntimeValue equals(RuntimeValue left, RuntimeValue right) throws RuntimeException {
+    public static RuntimeValue equal(RuntimeValue left, RuntimeValue right) throws RuntimeException {
         if (isDiscreteIntSamples(left, right)) {
             return new RuntimeValue(
                     RuntimeValue.Type.DISCRETE_INT_SAMPLE,
