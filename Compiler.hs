@@ -1,6 +1,7 @@
 module Compiler (compile) where
 
 import Syntax
+import Data.List
 
 -- Stack
 
@@ -27,10 +28,21 @@ type Prototype = String
 data Output = Output [Line] Stack
               deriving (Show)
 
-data Function = QueryFunction Id Int
-
 emptyOutput :: Output
 emptyOutput = Output [] emptyStack
+
+data Function = QueryFunction Id Int
+                deriving (Show)
+
+data Environment = Environment Id [Function]
+
+programEnvironment :: Program -> Environment
+programEnvironment (Program name _ queries) = Environment name functions
+  where functions = [QueryFunction name (length arguments) | (Query name arguments _) <- queries]
+
+lookupFunction :: Id -> Environment -> Maybe Function
+lookupFunction id (Environment _ functions) = find match functions
+  where match (QueryFunction name _) = name == id
 
 type Instruction = Output -> Output
 
@@ -42,6 +54,7 @@ instr instruction updateStack (Output instructions stack) = Output instructions'
 exec :: [Instruction] -> Instruction
 exec (instruction:[]) = instruction
 exec (instruction:next) = (exec next) . instruction
+exec [] = id
 
 indent :: [Line] -> [Line]
 indent is = ["  " ++ i | i <- is]
@@ -76,17 +89,17 @@ initMethod = concat [[".method public <init>()V"],
                      [".end method"]]
 
 queryMethods :: Program -> [Line]
-queryMethods (Program _ _ queries) = concat $ map queryMethod queries
+queryMethods program@(Program _ _ queries) = concat $ map (queryMethod program) queries
 
-queryMethod :: Query -> [Line]
-queryMethod (Query name arguments body) = compileMethod methodPrototype methodBody
+queryMethod :: Program -> Query -> [Line]
+queryMethod program (Query name arguments body) = compileMethod methodPrototype methodBody
   where methodPrototype = concat ["public ", name, "(", methodArguments, ")Lepiscopal/runtime/RuntimeValue;"]
         methodArguments = concat $ replicate (length arguments) "Lepiscopal/runtime/RuntimeValue;"
-        methodBody = exec [compileExpression (head body), instr "areturn" (shrinkStack 1)]
+        methodBody = exec [compileExpression (head body) (programEnvironment program), instr "areturn" (shrinkStack 1)]
 
 runMethod :: Program -> [Line]
-runMethod (Program _ body _) = compileMethod "public run()Lepiscopal/runtime/RuntimeValue;" methodBody
-  where methodBody = exec [compileExpression body, instr "areturn" (shrinkStack 1)]
+runMethod program@(Program _ body _) = compileMethod "public run()Lepiscopal/runtime/RuntimeValue;" methodBody
+  where methodBody = exec [compileExpression body (programEnvironment program), instr "areturn" (shrinkStack 1)]
 
 compileMethod :: Prototype -> Instruction -> [Line]
 compileMethod prototype instruction = concat [[".method " ++ prototype],
@@ -95,15 +108,16 @@ compileMethod prototype instruction = concat [[".method " ++ prototype],
                                               [".end method"]]
   where (Output body stack) = instruction emptyOutput
 
-compileExpression :: Expression -> Instruction
-compileExpression (ExpConst constant) = exec [compileConstant constant,
-                                              createDiscreteSample]
-compileExpression (ExpOp operator left right) = exec [compileExpression right,
-                                                      compileExpression left,
-                                                      compileOperator operator]
-compileExpression (ExpDist distribution) = compileDistribution distribution
-compileExpression (ExpSample expression) = exec [compileExpression expression,
-                                                 sampleDistribution]
+compileExpression :: Expression -> Environment -> Instruction
+compileExpression (ExpConst constant) _ = exec [compileConstant constant,
+                                                createDiscreteSample]
+compileExpression (ExpOp operator left right) env = exec [compileExpression right env,
+                                                          compileExpression left env,
+                                                          compileOperator operator]
+compileExpression (ExpDist distribution) env = compileDistribution distribution env
+compileExpression (ExpSample expression) env = exec [compileExpression expression env,
+                                                     sampleDistribution]
+compileExpression (ExpCall name arguments) env = compileCall name arguments env
 
 createDiscreteSample :: Instruction
 createDiscreteSample = instr "invokestatic episcopal/runtime/Runtime/constant(Ljava/lang/Object;)Lepiscopal/runtime/RuntimeValue;" id
@@ -134,17 +148,25 @@ compileOperator operator = instr instruction (expandStack 1 . shrinkStack 2)
         method = "episcopal/runtime/Runtime/" ++ (operatorMethodName operator)
         instruction = "invokestatic " ++ method ++ descriptor
 
-compileDistribution :: Distribution -> Instruction
-compileDistribution (Bernoulli p) = exec [compileExpression p,
-                                          instr "invokestatic episcopal/runtime/Runtime/bernoulli(Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" id]
-compileDistribution (Beta a b) = exec [compileExpression b,
-                                       compileExpression a,
-                                       instr "invokestatic episcopal/runtime/Runtime/beta(Lepiscopal/runtime/RuntimeValue;Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" (expandStack 1 . shrinkStack 2)]
-compileDistribution (Normal m sd) = exec [compileExpression sd,
-                                          compileExpression m,
-                                          instr "invokestatic episcopal/runtime/Runtime/normal(Lepiscopal/runtime/RuntimeValue;Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" (expandStack 1 . shrinkStack 2)]
-compileDistribution (Flip p) = exec [compileExpression p,
-                                     instr "invokestatic episcopal/runtime/Runtime/flip(Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" id]
+compileDistribution :: Distribution -> Environment -> Instruction
+compileDistribution (Bernoulli p) env = exec [compileExpression p env,
+                                              instr "invokestatic episcopal/runtime/Runtime/bernoulli(Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" id]
+compileDistribution (Beta a b) env = exec [compileExpression b env,
+                                           compileExpression a env,
+                                           instr "invokestatic episcopal/runtime/Runtime/beta(Lepiscopal/runtime/RuntimeValue;Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" (expandStack 1 . shrinkStack 2)]
+compileDistribution (Normal m sd) env = exec [compileExpression sd env,
+                                              compileExpression m env,
+                                              instr "invokestatic episcopal/runtime/Runtime/normal(Lepiscopal/runtime/RuntimeValue;Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" (expandStack 1 . shrinkStack 2)]
+compileDistribution (Flip p) env = exec [compileExpression p env,
+                                         instr "invokestatic episcopal/runtime/Runtime/flip(Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" id]
 
 sampleDistribution :: Instruction
 sampleDistribution = instr "invokestatic episcopal/runtime/Runtime/sample(Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" id
+
+compileCall :: Id -> [Expression] -> Environment -> Instruction
+compileCall name arguments env@(Environment program _) = case lookupFunction name env of
+                                                           (Just function) -> exec [operands, compile function]
+                                                           Nothing -> error ("Function " ++ name ++ " does not exist")
+  where compile (QueryFunction _ _) = instr ("invokevirtual " ++ program ++ "/" ++ name) id
+        operands = exec [exec $ reverse [compileExpression argument env | argument <- arguments],
+                         instr "aload_0" (expandStack 1)]

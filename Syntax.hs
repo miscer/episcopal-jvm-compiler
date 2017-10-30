@@ -22,7 +22,6 @@ data Expression = ExpConst Constant
                 | ExpObserve Expression Expression
                 | ExpSample Expression
                 | ExpDist Distribution
-                | ExpId Id
                 | ExpCall Id [Expression]
                 | ExpOp Operator Expression Expression
                   deriving Show
