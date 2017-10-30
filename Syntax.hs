@@ -31,8 +31,7 @@ data Constant = ConstInt Int
               | ConstBool Bool
                 deriving Show
 
-data Definition = DefFunc Id [Id] [Expression]
-                | DefDist Id [Id] [Expression]
+data Definition = Definition Id [Id] [Expression]
                   deriving Show
 
 data Distribution = Bernoulli Expression

@@ -32,6 +32,7 @@ emptyOutput :: Output
 emptyOutput = Output [] emptyStack
 
 data Function = QueryFunction Id Int
+              | LocalFunction Id [Id] Expression
                 deriving (Show)
 
 data Environment = Environment Id [Function]
@@ -125,6 +126,7 @@ compileExpression (ExpDist distribution) env = compileDistribution distribution 
 compileExpression (ExpSample expression) env = exec [compileExpression expression env,
                                                      sampleDistribution]
 compileExpression (ExpCall name arguments) env = compileCall name arguments env
+compileExpression (ExpLet definitions expression) env = compileLet definitions expression env
 
 createDiscreteSample :: Instruction
 createDiscreteSample = instr "invokestatic episcopal/runtime/Runtime/constant(Ljava/lang/Object;)Lepiscopal/runtime/RuntimeValue;" id
@@ -176,3 +178,9 @@ compileCall name arguments env@(Environment program _) = case lookupFunction nam
   where compile (QueryFunction _ arity) = instr ("invokevirtual " ++ (method (program ++ "/" ++ name) arity)) id
         operands = exec [instr "aload_0" (expandStack 1),
                          exec [compileExpression argument env | argument <- arguments]]
+
+compileLet :: [Definition] -> Expression -> Environment -> Instruction
+compileLet definitions expression (Environment name functions) = compileExpression expression env'
+  where env' = Environment name functions'
+        functions' = defined ++ functions'
+        defined = [LocalFunction name arguments (head expressions) | (Definition name arguments expressions) <- definitions]
