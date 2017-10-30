@@ -59,6 +59,10 @@ exec [] = id
 indent :: [Line] -> [Line]
 indent is = ["  " ++ i | i <- is]
 
+method :: Id -> Int -> String
+method name arity = concat [name, "(", arguments, ")Lepiscopal/runtime/RuntimeValue;"]
+  where arguments = concat (replicate arity "Lepiscopal/runtime/RuntimeValue;")
+
 compile :: Program -> [Line]
 compile program = concat [classHeader program,
                           mainMethod program,
@@ -93,13 +97,14 @@ queryMethods program@(Program _ _ queries) = concat $ map (queryMethod program) 
 
 queryMethod :: Program -> Query -> [Line]
 queryMethod program (Query name arguments body) = compileMethod methodPrototype methodBody
-  where methodPrototype = concat ["public ", name, "(", methodArguments, ")Lepiscopal/runtime/RuntimeValue;"]
-        methodArguments = concat $ replicate (length arguments) "Lepiscopal/runtime/RuntimeValue;"
-        methodBody = exec [compileExpression (head body) (programEnvironment program), instr "areturn" (shrinkStack 1)]
+  where methodPrototype = "public " ++ (method name (length arguments))
+        methodBody = exec [compileExpression (head body) (programEnvironment program),
+                           instr "areturn" (shrinkStack 1)]
 
 runMethod :: Program -> [Line]
 runMethod program@(Program _ body _) = compileMethod "public run()Lepiscopal/runtime/RuntimeValue;" methodBody
-  where methodBody = exec [compileExpression body (programEnvironment program), instr "areturn" (shrinkStack 1)]
+  where methodBody = exec [compileExpression body (programEnvironment program),
+                           instr "areturn" (shrinkStack 1)]
 
 compileMethod :: Prototype -> Instruction -> [Line]
 compileMethod prototype instruction = concat [[".method " ++ prototype],
@@ -144,29 +149,28 @@ operatorMethodName OpEqual = "equal"
 
 compileOperator :: Operator -> Instruction
 compileOperator operator = instr instruction (expandStack 1 . shrinkStack 2)
-  where descriptor = "(Lepiscopal/runtime/RuntimeValue;Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;"
-        method = "episcopal/runtime/Runtime/" ++ (operatorMethodName operator)
-        instruction = "invokestatic " ++ method ++ descriptor
+  where instruction = "invokestatic " ++ (method methodName 2)
+        methodName = "episcopal/runtime/Runtime/" ++ (operatorMethodName operator)
 
 compileDistribution :: Distribution -> Environment -> Instruction
 compileDistribution (Bernoulli p) env = exec [compileExpression p env,
-                                              instr "invokestatic episcopal/runtime/Runtime/bernoulli(Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" id]
+                                              instr ("invokestatic " ++ (method "episcopal/runtime/Runtime/bernoulli" 1)) (expandStack 1 . shrinkStack 1)]
 compileDistribution (Beta a b) env = exec [compileExpression b env,
                                            compileExpression a env,
-                                           instr "invokestatic episcopal/runtime/Runtime/beta(Lepiscopal/runtime/RuntimeValue;Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" (expandStack 1 . shrinkStack 2)]
+                                           instr ("invokestatic " ++ (method "episcopal/runtime/Runtime/beta" 2)) (expandStack 1 . shrinkStack 2)]
 compileDistribution (Normal m sd) env = exec [compileExpression sd env,
                                               compileExpression m env,
-                                              instr "invokestatic episcopal/runtime/Runtime/normal(Lepiscopal/runtime/RuntimeValue;Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" (expandStack 1 . shrinkStack 2)]
+                                              instr ("invokestatic " ++ (method "episcopal/runtime/Runtime/normal" 2)) (expandStack 1 . shrinkStack 2)]
 compileDistribution (Flip p) env = exec [compileExpression p env,
-                                         instr "invokestatic episcopal/runtime/Runtime/flip(Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" id]
+                                         instr ("invokestatic " ++ (method "episcopal/runtime/Runtime/flip" 1)) id]
 
 sampleDistribution :: Instruction
-sampleDistribution = instr "invokestatic episcopal/runtime/Runtime/sample(Lepiscopal/runtime/RuntimeValue;)Lepiscopal/runtime/RuntimeValue;" id
+sampleDistribution = instr ("invokestatic " ++ (method "episcopal/runtime/Runtime/sample" 1)) id
 
 compileCall :: Id -> [Expression] -> Environment -> Instruction
 compileCall name arguments env@(Environment program _) = case lookupFunction name env of
                                                            (Just function) -> exec [operands, compile function]
                                                            Nothing -> error ("Function " ++ name ++ " does not exist")
-  where compile (QueryFunction _ _) = instr ("invokevirtual " ++ program ++ "/" ++ name) id
+  where compile (QueryFunction _ arity) = instr ("invokevirtual " ++ (method (program ++ "/" ++ name) arity)) id
         operands = exec [exec $ reverse [compileExpression argument env | argument <- arguments],
                          instr "aload_0" (expandStack 1)]
