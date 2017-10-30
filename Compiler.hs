@@ -44,6 +44,7 @@ programEnvironment (Program name _ queries) = Environment name functions
 lookupFunction :: Id -> Environment -> Maybe Function
 lookupFunction id (Environment _ functions) = find match functions
   where match (QueryFunction name _) = name == id
+        match (LocalFunction name _ _) = name == id
 
 type Instruction = Output -> Output
 
@@ -175,6 +176,7 @@ compileCall :: Id -> [Expression] -> Environment -> Instruction
 compileCall name arguments env = case lookupFunction name env of
                                    (Just function) -> case function of
                                      (QueryFunction _ _) -> compileQueryCall function arguments env
+                                     (LocalFunction _ _ _) -> compileLocalCall function arguments env
                                    Nothing -> error $ "Function " ++ name ++ " does not exist"
 
 compileQueryCall :: Function -> [Expression] -> Environment -> Instruction
@@ -185,8 +187,16 @@ compileQueryCall function arguments env = exec [operands, object, call]
         (QueryFunction name arity) = function
         (Environment program _) = env
 
+compileLocalCall :: Function -> [Expression] -> Environment -> Instruction
+compileLocalCall function arguments env = compileExpression expression env'
+  where env' = Environment program functions'
+        functions' = zipWith bind parameters arguments
+        bind parameter argument = LocalFunction parameter [] argument
+        (LocalFunction _ parameters expression) = function
+        (Environment program _) = env
+
 compileLet :: [Definition] -> Expression -> Environment -> Instruction
-compileLet definitions expression (Environment name functions) = compileExpression expression env'
-  where env' = Environment name functions'
+compileLet definitions expression (Environment program functions) = compileExpression expression env'
+  where env' = Environment program functions'
         functions' = defined ++ functions'
         defined = [LocalFunction name arguments (head expressions) | (Definition name arguments expressions) <- definitions]
