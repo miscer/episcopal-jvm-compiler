@@ -1,6 +1,7 @@
 module Compiler (compile) where
 
 import Syntax
+import Jasmin
 import Data.List
 
 -- Stack
@@ -61,9 +62,9 @@ exec [] = id
 indent :: [Line] -> [Line]
 indent is = ["  " ++ i | i <- is]
 
-method :: Id -> Int -> String
-method name arity = concat [name, "(", arguments, ")Lepiscopal/runtime/RuntimeValue;"]
-  where arguments = concat (replicate arity "Lepiscopal/runtime/RuntimeValue;")
+method :: Id -> Int -> Method
+method name arity = Method name arguments (TypeObject "episcopal/runtime/RuntimeValue")
+  where arguments = replicate arity (TypeObject "episcopal/runtime/RuntimeValue")
 
 compile :: Program -> [Line]
 compile program = concat [classHeader program,
@@ -73,48 +74,49 @@ compile program = concat [classHeader program,
                           runMethod program]
 
 classHeader :: Program -> [Line]
-classHeader (Program name _ _) = [".class public " ++ name,
-                                  ".super episcopal/runtime/Program"]
+classHeader (Program name _ _) = [jclass [ClassPublic] name,
+                                  jsuper "episcopal/runtime/Program"]
 
 mainMethod :: Program -> [Line]
-mainMethod (Program name _ _) = concat [[".method static public main([Ljava/lang/String;)V"],
-                                        [".limit stack 2"],
-                                        indent ["new " ++ name,
-                                                "dup",
-                                                "invokenonvirtual " ++ name ++ "/<init>()V",
-                                                "invokevirtual " ++ name ++ "/print()V",
-                                                "return"],
-                                        [".end method"]]
+mainMethod (Program name _ _) = concat [[jmethod [MethodStatic, MethodPublic] (Method "main" [(TypeObject "java/lang/string")] TypeVoid)],
+                                        [jstack 2],
+                                        indent [jinstrargs "new" [name],
+                                                jinstr "dup",
+                                                jinstrargs "invokenonvirtual" [show (Method (name ++ "/<init>") [] TypeVoid)],
+                                                jinstrargs "invokenonvirtual" [show (Method (name ++ "/print") [] TypeVoid)],
+                                                jinstr "return"],
+                                        [jmethodend]]
 
 initMethod :: [Line]
-initMethod = concat [[".method public <init>()V"],
-                     [".limit stack 1"],
-                     indent ["aload_0",
-                             "invokenonvirtual episcopal/runtime/Program/<init>()V",
-                             "return"],
-                     [".end method"]]
+initMethod = concat [[jmethod [MethodPublic] (Method "<init>" [] TypeVoid)],
+                     [jstack 1],
+                     indent [jinstr "aload_0",
+                             jinstrargs "invokenonvirtual" [show (Method "episcopal/runtime/Program/<init>" [] TypeVoid)],
+                             jinstr "return"],
+                     [jmethodend]]
 
 queryMethods :: Program -> [Line]
 queryMethods program@(Program _ _ queries) = concat $ map (queryMethod program) queries
 
 queryMethod :: Program -> Query -> [Line]
 queryMethod program (Query name arguments body) = compileMethod methodPrototype methodLocals methodBody
-  where methodPrototype = "public " ++ (method name (length arguments))
+  where methodPrototype = method name (length arguments)
         methodLocals = (length arguments) + 1
         methodBody = exec [compileExpression (head body) (programEnvironment program),
-                           instr "areturn" (shrinkStack 1)]
+                           instr (jinstr "areturn") (shrinkStack 1)]
 
 runMethod :: Program -> [Line]
-runMethod program@(Program _ body _) = compileMethod "public run()Lepiscopal/runtime/RuntimeValue;" 1 methodBody
-  where methodBody = exec [compileExpression body (programEnvironment program),
-                           instr "areturn" (shrinkStack 1)]
+runMethod program@(Program _ body _) = compileMethod methodPrototype 1 methodBody
+  where methodPrototype = Method "run" [] (TypeObject "episcopal/runtime/RuntimeValue")
+        methodBody = exec [compileExpression body (programEnvironment program),
+                           instr (jinstr "areturn") (shrinkStack 1)]
 
-compileMethod :: Prototype -> Int -> Instruction -> [Line]
-compileMethod prototype locals instruction = concat [[".method " ++ prototype],
-                                                     [".limit stack " ++ (show $ maxStackSize stack)],
-                                                     [".limit locals " ++ (show locals)],
+compileMethod :: Method -> Int -> Instruction -> [Line]
+compileMethod prototype locals instruction = concat [[jmethod [MethodPublic] prototype],
+                                                     [jstack (maxStackSize stack)],
+                                                     [jlocals locals],
                                                      indent body,
-                                                     [".end method"]]
+                                                     [jmethodend]]
   where (Output body stack) = instruction emptyOutput
 
 compileExpression :: Expression -> Environment -> Instruction
@@ -130,16 +132,24 @@ compileExpression (ExpCall name arguments) env = compileCall name arguments env
 compileExpression (ExpLet definitions expression) env = compileLet definitions expression env
 
 createDiscreteSample :: Instruction
-createDiscreteSample = instr "invokestatic episcopal/runtime/Runtime/constant(Ljava/lang/Object;)Lepiscopal/runtime/RuntimeValue;" id
+createDiscreteSample = instr (jinstrargs "invokestatic" [show constant]) id
+  where constant = Method "episcopal/runtime/Runtime/constant" [TypeObject "java/lang/Object"] (TypeObject "episcopal/runtime/RuntimeValue")
 
 compileConstant :: Constant -> Instruction
-compileConstant (ConstInt n) = exec [instr ("ldc " ++ show n) (expandStack 1),
-                                     instr "invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;" id]
-compileConstant (ConstFloat n) = exec [instr ("ldc " ++ show n) (expandStack 1),
-                                       instr "invokestatic java/lang/Float/valueOf(F)Ljava/lang/Float;" id]
-compileConstant (ConstBool n) = if n
-                                  then instr "getstatic java/lang/Boolean/TRUE Ljava/lang/Boolean;" (expandStack 1)
-                                  else instr "getstatic java/lang/Boolean/FALSE Ljava/lang/Boolean;" (expandStack 1)
+
+compileConstant (ConstInt n) = exec [instr (jinstrargs "ldc" [show n]) (expandStack 1),
+                                     instr (jinstrargs "invokestatic" [show valueOf]) id]
+  where valueOf = Method "java/lang/Integer/valueOf" [TypeInt] (TypeObject "java/lang/Integer")
+
+compileConstant (ConstFloat n) = exec [instr (jinstrargs "ldc" [show n]) (expandStack 1),
+                                       instr (jinstrargs "invokestatic" [show valueOf]) id]
+  where valueOf = Method "java/lang/Float/valueOf" [TypeFloat] (TypeObject "java/lang/Float")
+
+compileConstant (ConstBool n) = instr (jinstrargs "getstatic" [field, show boolean]) (expandStack 1)
+  where boolean = TypeObject "java/lang/Boolean"
+        true = "java/lang/Boolean/TRUE"
+        false = "java/lang/Boolean/FALSE"
+        field = if n then true else false
 
 operatorMethodName :: Operator -> String
 operatorMethodName OpPlus = "add"
@@ -154,23 +164,23 @@ operatorMethodName OpEqual = "equal"
 
 compileOperator :: Operator -> Instruction
 compileOperator operator = instr instruction (expandStack 1 . shrinkStack 2)
-  where instruction = "invokestatic " ++ (method methodName 2)
+  where instruction = jinstrargs "invokestatic" [show (method methodName 2)]
         methodName = "episcopal/runtime/Runtime/" ++ (operatorMethodName operator)
 
 compileDistribution :: Distribution -> Environment -> Instruction
 compileDistribution (Bernoulli p) env = exec [compileExpression p env,
-                                              instr ("invokestatic " ++ (method "episcopal/runtime/Runtime/bernoulli" 1)) (expandStack 1 . shrinkStack 1)]
+                                              instr (jinstrargs "invokestatic" [show (method "episcopal/runtime/Runtime/bernoulli" 1)]) (expandStack 1 . shrinkStack 1)]
 compileDistribution (Beta a b) env = exec [compileExpression b env,
                                            compileExpression a env,
-                                           instr ("invokestatic " ++ (method "episcopal/runtime/Runtime/beta" 2)) (expandStack 1 . shrinkStack 2)]
+                                           instr (jinstrargs "invokestatic" [show (method "episcopal/runtime/Runtime/beta" 2)]) (expandStack 1 . shrinkStack 2)]
 compileDistribution (Normal m sd) env = exec [compileExpression sd env,
                                               compileExpression m env,
-                                              instr ("invokestatic " ++ (method "episcopal/runtime/Runtime/normal" 2)) (expandStack 1 . shrinkStack 2)]
+                                              instr (jinstrargs "invokestatic" [show (method "episcopal/runtime/Runtime/normal" 2)]) (expandStack 1 . shrinkStack 2)]
 compileDistribution (Flip p) env = exec [compileExpression p env,
-                                         instr ("invokestatic " ++ (method "episcopal/runtime/Runtime/flip" 1)) id]
+                                         instr (jinstrargs "invokestatic" [show (method "episcopal/runtime/Runtime/flip" 1)]) id]
 
 sampleDistribution :: Instruction
-sampleDistribution = instr ("invokestatic " ++ (method "episcopal/runtime/Runtime/sample" 1)) id
+sampleDistribution = instr (jinstrargs "invokestatic" [show (method "episcopal/runtime/Runtime/sample" 1)]) id
 
 compileCall :: Id -> [Expression] -> Environment -> Instruction
 compileCall name arguments env = case lookupFunction name env of
@@ -182,8 +192,8 @@ compileCall name arguments env = case lookupFunction name env of
 compileQueryCall :: Function -> [Expression] -> Environment -> Instruction
 compileQueryCall function arguments env = exec [operands, object, call]
   where operands = exec [compileExpression argument env | argument <- arguments]
-        object = instr "aload_0" (expandStack 1)
-        call = instr ("invokevirtual " ++ (method (program ++ "/" ++ name) arity)) (expandStack 1 . shrinkStack 1)
+        object = instr (jinstr "aload_0") (expandStack 1)
+        call = instr (jinstrargs "invokevirtual" [show (method (program ++ "/" ++ name) arity)]) (expandStack 1 . shrinkStack 1)
         (QueryFunction name arity) = function
         (Environment program _) = env
 
