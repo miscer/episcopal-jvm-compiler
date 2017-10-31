@@ -1,6 +1,7 @@
 package episcopal.runtime;
 
 import episcopal.Distribution;
+import episcopal.Observations;
 import episcopal.Operators;
 import episcopal.continuous.BetaDistribution;
 import episcopal.continuous.ContinuousDistribution;
@@ -241,7 +242,7 @@ public class Runtime {
 
             if (distribution instanceof FlipDistribution) {
                 return new RuntimeValue(
-                        RuntimeValue.Type.DISCRETE_FLOAT_SAMPLE,
+                        RuntimeValue.Type.DISCRETE_BOOL_SAMPLE,
                         distribution.sample()
                 );
             }
@@ -255,6 +256,22 @@ public class Runtime {
         }
 
         throw new RuntimeException("Unable to sample value");
+    }
+
+    public static RuntimeValue observe(RuntimeValue sample, RuntimeValue result) throws RuntimeException {
+        System.out.printf("%s %s\n", sample.getType(), result.getType());
+
+        if (isDiscreteBoolSample(sample)) {
+            Boolean value = Observations.select(sample.getDiscreteBoolSample());
+
+            if (value) {
+                return result;
+            } else {
+                throw new RuntimeException("Observation failed");
+            }
+        }
+
+        throw new RuntimeException("Unable to observe value");
     }
 
     private static boolean isDiscreteIntSample(RuntimeValue value) {

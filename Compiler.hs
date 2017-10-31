@@ -78,7 +78,7 @@ classHeader (Program name _ _) = [jclass [ClassPublic] name,
                                   jsuper "episcopal/runtime/Program"]
 
 mainMethod :: Program -> [Line]
-mainMethod (Program name _ _) = concat [[jmethod [MethodStatic, MethodPublic] (Method "main" [(TypeObject "java/lang/string")] TypeVoid)],
+mainMethod (Program name _ _) = concat [[jmethod [MethodStatic, MethodPublic] (Method "main" [(TypeArray (TypeObject "java/lang/String"))] TypeVoid)],
                                         [jstack 2],
                                         indent [jinstrargs "new" [name],
                                                 jinstr "dup",
@@ -122,14 +122,17 @@ compileMethod prototype locals instruction = concat [[jmethod [MethodPublic] pro
 compileExpression :: Expression -> Environment -> Instruction
 compileExpression (ExpConst constant) _ = exec [compileConstant constant,
                                                 createDiscreteSample]
-compileExpression (ExpOp operator left right) env = exec [compileExpression right env,
-                                                          compileExpression left env,
+compileExpression (ExpOp operator left right) env = exec [compileExpression left env,
+                                                          compileExpression right env,
                                                           compileOperator operator]
 compileExpression (ExpDist distribution) env = compileDistribution distribution env
 compileExpression (ExpSample expression) env = exec [compileExpression expression env,
                                                      sampleDistribution]
 compileExpression (ExpCall name arguments) env = compileCall name arguments env
 compileExpression (ExpLet definitions expression) env = compileLet definitions expression env
+compileExpression (ExpObserve sample expression) env = exec [compileExpression sample env,
+                                                             compileExpression expression env,
+                                                             observeSample]
 
 createDiscreteSample :: Instruction
 createDiscreteSample = instr (jinstrargs "invokestatic" [show constant]) id
@@ -210,3 +213,6 @@ compileLet definitions expression (Environment program functions) = compileExpre
   where env' = Environment program functions'
         functions' = defined ++ functions'
         defined = [LocalFunction name arguments (head expressions) | (Definition name arguments expressions) <- definitions]
+
+observeSample :: Instruction
+observeSample = instr (jinstrargs "invokestatic" [show (method "episcopal/runtime/Runtime/observe" 2)]) (expandStack 1 . shrinkStack 2)
