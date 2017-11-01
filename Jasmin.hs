@@ -20,6 +20,7 @@ module Jasmin (Identifier,
 
 type Identifier = String
 
+-- | Jasmin class directive attributes
 data ClassSpec = ClassPublic | ClassFinal | ClassSuper | ClassInterface | ClassAbstract
 
 instance Show ClassSpec where
@@ -29,6 +30,7 @@ instance Show ClassSpec where
   show ClassInterface = "interface"
   show ClassAbstract = "abstract"
 
+-- | Jasmin field directive attributes
 data FieldSpec = FieldPublic | FieldPrivate | FieldProtected | FieldStatic | FieldFinal | FieldVolatile | FieldTransient
 
 instance Show FieldSpec where
@@ -40,6 +42,7 @@ instance Show FieldSpec where
   show FieldVolatile = "volatile"
   show FieldTransient = "transient"
 
+-- | Jasmin method directive attributes
 data MethodSpec = MethodPublic | MethodPrivate | MethodProtected | MethodStatic | MethodFinal | MethodSynchronized | MethodNative | MethodAbstract
 
 instance Show MethodSpec where
@@ -52,6 +55,7 @@ instance Show MethodSpec where
   show MethodNative = "native"
   show MethodAbstract = "abstract"
 
+-- | JVM types
 data TypeSpec = TypeByte | TypeChar | TypeDouble | TypeFloat | TypeInt | TypeLong | TypeShort | TypeBoolean | TypeVoid | TypeArray TypeSpec | TypeObject Identifier
 
 instance Show TypeSpec where
@@ -67,50 +71,83 @@ instance Show TypeSpec where
   show (TypeArray t) = "[" ++ (show t)
   show (TypeObject i) = "L" ++ i ++ ";"
 
+-- | JVM method with the name, types of parameters and return type
 data Method = Method Identifier [TypeSpec] TypeSpec
 
 instance Show Method where
   show (Method name parameters returntype) = concat [name, "(", (concat $ map show parameters), ")", show returntype]
 
-jsource :: Identifier -> String
+-- | Jasmin source directive
+jsource :: Identifier -- | File name
+        -> String
 jsource name = unwords [".source", name]
 
-jinterface :: Identifier -> String
+-- | Jasmin interface directive
+jinterface :: Identifier -- | Interface name
+           -> String
 jinterface name = unwords [".interface", name]
 
-jclass :: [ClassSpec] -> Identifier -> String
+-- | Jasmin class directive
+jclass :: [ClassSpec] -- | Class attributes
+       -> Identifier -- | Class name
+       -> String
 jclass spec name = unwords [".class", unwords $ map show spec, name]
 
-jsuper :: Identifier -> String
+-- | Jasmin super directive
+jsuper :: Identifier -- | Parent class name
+       -> String
 jsuper name = unwords [".super", name]
 
-jimplements :: Identifier -> String
+-- | Jasmin implements directive
+jimplements :: Identifier -- | Interface name
+            -> String
 jimplements name = unwords [".implements", name]
 
-jfield :: [FieldSpec] -> Identifier -> TypeSpec -> String
+-- | Jasmin field directive (without default value)
+jfield :: [FieldSpec] -- | Field attributes
+       -> Identifier -- | Field name
+       -> TypeSpec -- | Field type
+       -> String
 jfield spec name jtype = unwords [".field", unwords $ map show spec, name, show jtype]
 
-jfieldvalue :: [FieldSpec] -> Identifier -> TypeSpec -> String -> String
+-- | Jasmin field directive (with default value)
+jfieldvalue :: [FieldSpec] -- | Field attributes
+            -> Identifier -- | Field name
+            -> TypeSpec -- | Field type
+            -> String -- | Default value
+            -> String
 jfieldvalue spec name jtype value = unwords [jfield spec name jtype, "=", value]
 
-jmethod :: [MethodSpec] -> Method -> String
+-- | Jasmin method directive
+jmethod :: [MethodSpec] -- | Method attributes
+        -> Method -- | Method definition
+        -> String
 jmethod spec method = unwords [".method", unwords $ map show spec, show method]
 
+-- | Jasmin stack size directive
 jstack :: Int -> String
 jstack n = unwords [".limit stack", show n]
 
+-- | Jasmin locals size directive
 jlocals :: Int -> String
 jlocals n = unwords [".limit locals", show n]
 
-jinstr :: Identifier -> String
+-- | Jasmin instruction with no arguments
+jinstr :: Identifier -- | Instruction name
+       -> String
 jinstr name = name
 
-jinstrargs :: Identifier -> [String] -> String
+-- | Jasmin instruction with arguments
+jinstrargs :: Identifier -- | Instruction name
+           -> [String] -- | Instruction arguments
+           -> String
 jinstrargs name arguments = unwords [jinstr name, unwords arguments]
 
+-- | Jasmin method end directive
 jmethodend :: String
 jmethodend = ".end method"
 
+-- | Example program
 jexample =
   [jsource "source.java",
 
