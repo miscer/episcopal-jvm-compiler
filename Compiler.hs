@@ -50,14 +50,14 @@ data Function
   -- | class
   = QueryFunction Id Int
   -- | Locally defined function (using the let expression) with the name, list
-  -- | of parameters and the expression. The expression is copied when the local
-  -- | function is called.
-  | LocalFunction Id [Id] Expression
+  -- | of parameters, the expression and the environment of the let expression
+  -- | that defined it. The expression is copied when the local function is called.
+  | LocalFunction Id [Id] Expression Environment
     deriving (Show)
 
 -- | Expression environment, containing the program name and the list of
 -- | functions defined in the expression's scope
-data Environment = Environment Id [Function]
+data Environment = Environment Id [Function] deriving (Show)
 
 -- | Creates the starting environment for program methods. This contains the
 -- | Program name and a list of all query functions
@@ -69,7 +69,7 @@ programEnvironment (Program name _ queries) = Environment name functions
 lookupFunction :: Id -> Environment -> Maybe Function
 lookupFunction id (Environment _ functions) = find match functions
   where match (QueryFunction name _) = name == id
-        match (LocalFunction name _ _) = name == id
+        match (LocalFunction name _ _ _) = name == id
 
 -- | Instruction is a function that modifies an output. It usually adds an
 -- | instruction line and modifies the stack
@@ -260,7 +260,7 @@ compileCall :: Id -- | Name of the function
 compileCall name arguments env = case lookupFunction name env of -- try to find the function by its name
                                    (Just function) -> case function of -- function exists
                                      (QueryFunction _ _) -> compileQueryCall function arguments env
-                                     (LocalFunction _ _ _) -> compileLocalCall function arguments env
+                                     (LocalFunction _ _ _ _) -> compileLocalCall function arguments env
                                    Nothing -> error $ "Function " ++ name ++ " does not exist" -- function does not exist
 
 -- | Compiles a call to the specified query function
@@ -281,22 +281,23 @@ compileLocalCall :: Function  -- | Local function
                  -> [Expression] -- | Arguments for the function
                  -> Environment -- | Current environment
                  -> Instruction
-compileLocalCall function arguments env = compileExpression expression env'
-  where env' = Environment program functions'
-        functions' = zipWith bind parameters arguments
-        bind parameter argument = LocalFunction parameter [] argument
-        (LocalFunction _ parameters expression) = function
-        (Environment program _) = env
+compileLocalCall function arguments env = compileExpression expression env' -- compile the expression in the local function, using the modified environment
+  where env' = Environment program functions' -- the modified environment is based on the environment of the let expression that defined the function
+        functions' = (zipWith bind parameters arguments) ++ functions -- it contains all the functions in the environment, plus call arguments defined as new local functions
+        bind parameter argument = LocalFunction parameter [] argument env -- arguments are bound to the environment of the call expression, not the let expression
+        (LocalFunction _ parameters expression fenv) = function
+        (Environment program functions) = fenv
 
 -- | Compiles a local definition expression
 compileLet :: [Definition] -- | Defined functions
            -> Expression -- | Expression that can use the definitions
            -> Environment -- | Parent environment for the expression
            -> Instruction
-compileLet definitions expression env = compileExpression expression env'
-  where env' = Environment program functions'
+compileLet definitions expression env = compileExpression expression env' -- let expression modifies the environment of the contained expression
+  where env' = Environment program functions' -- the new environment contains all previously defined functions, plus the function defined by let
         functions' = defined ++ functions'
-        defined = [LocalFunction name arguments (head expressions) | (Definition name arguments expressions) <- definitions]
+        defined = [LocalFunction name arguments (head expressions) env | -- for each definition in the let expression a new function is created, capturing the
+                   (Definition name arguments expressions) <- definitions] -- environment of the let expression so that it can be reused when calling the defined function
         (Environment program functions) = env
 
 -- | Generates an instruction for observing a sample
