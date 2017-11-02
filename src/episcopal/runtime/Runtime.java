@@ -10,8 +10,17 @@ import episcopal.discrete.BernoulliDistribution;
 import episcopal.discrete.DiscreteSample;
 import episcopal.discrete.FlipDistribution;
 
+/**
+ * This class contains static method used by the compiled bytecode. This way we need to use bytecode only to call these
+ * methods and let the Java compiler compile the runtime code.
+ */
 public class Runtime {
 
+    /**
+     * Creates a new discrete sample from an Integer, Float or Boolean instance.
+     * @param value Integer, Float or Boolean
+     * @return Discrete sample runtime value
+     */
     public static RuntimeValue constant(Object value) throws RuntimeException {
         if (value instanceof Integer) {
             return new RuntimeValue(RuntimeValue.Type.DISCRETE_INT_SAMPLE, DiscreteSample.create(value));
@@ -28,6 +37,12 @@ public class Runtime {
         throw new RuntimeException("Incompatible constant");
     }
 
+    /**
+     * Adds two runtime values. Represents the plus operator.
+     * @param left Left operand value
+     * @param right Right operand value
+     * @return Added values
+     */
     public static RuntimeValue add(RuntimeValue left, RuntimeValue right) throws RuntimeException {
         if (isDiscreteIntSamples(left, right)) {
             return new RuntimeValue(
@@ -60,6 +75,12 @@ public class Runtime {
         throw new RuntimeException("Adding incompatible types");
     }
 
+    /**
+     * Subtracts two runtime values. Represents the minus operator.
+     * @param left Left operand value
+     * @param right Right operand value
+     * @return Subtracted values
+     */
     public static RuntimeValue subtract(RuntimeValue left, RuntimeValue right) throws RuntimeException {
         if (isDiscreteIntSamples(left, right)) {
             return new RuntimeValue(
@@ -92,6 +113,12 @@ public class Runtime {
         throw new RuntimeException("Subtracting incompatible types");
     }
 
+    /**
+     * Multiplies two runtime values. Represents the times operator.
+     * @param left Left operand value
+     * @param right Right operand value
+     * @return Multiplied values
+     */
     public static RuntimeValue multiply(RuntimeValue left, RuntimeValue right) throws RuntimeException {
         if (isDiscreteIntSamples(left, right)) {
             return new RuntimeValue(
@@ -124,6 +151,12 @@ public class Runtime {
         throw new RuntimeException("Multiplying incompatible types");
     }
 
+    /**
+     * Divides two runtime values. Represents the over operator.
+     * @param left Left operand value
+     * @param right Right operand value
+     * @return Divided values
+     */
     public static RuntimeValue divide(RuntimeValue left, RuntimeValue right) throws RuntimeException {
         if (isDiscreteIntSamples(left, right)) {
             return new RuntimeValue(
@@ -156,6 +189,12 @@ public class Runtime {
         throw new RuntimeException("Dividing incompatible types");
     }
 
+    /**
+     * ANDs two runtime values. Represents the and operator.
+     * @param left Left operand value
+     * @param right Right operand value
+     * @return ANDed values
+     */
     public static RuntimeValue and(RuntimeValue left, RuntimeValue right) throws RuntimeException {
         if (isDiscreteBoolSamples(left, right)) {
             return new RuntimeValue(
@@ -167,6 +206,12 @@ public class Runtime {
         throw new RuntimeException("AND-ing incompatible types");
     }
 
+    /**
+     * ORs two runtime values. Represents the or operator.
+     * @param left Left operand value
+     * @param right Right operand value
+     * @return ORed values
+     */
     public static RuntimeValue or(RuntimeValue left, RuntimeValue right) throws RuntimeException {
         if (isDiscreteBoolSamples(left, right)) {
             return new RuntimeValue(
@@ -178,17 +223,23 @@ public class Runtime {
         throw new RuntimeException("OR-ing incompatible types");
     }
 
+    /**
+     * Checks if two values are equal. Represents the equals operator.
+     * @param left Left operand value
+     * @param right Right operand value
+     * @return Boolean or float discrete sample
+     */
     public static RuntimeValue equal(RuntimeValue left, RuntimeValue right) throws RuntimeException {
         if (isDiscreteIntSamples(left, right)) {
             return new RuntimeValue(
-                    RuntimeValue.Type.DISCRETE_INT_SAMPLE,
+                    RuntimeValue.Type.DISCRETE_BOOL_SAMPLE,
                     Operators.equalIntegers(left.getDiscreteIntSample(), right.getDiscreteIntSample())
             );
         }
 
         if (isDiscreteFloatSamples(left, right)) {
             return new RuntimeValue(
-                    RuntimeValue.Type.DISCRETE_FLOAT_SAMPLE,
+                    RuntimeValue.Type.DISCRETE_BOOL_SAMPLE,
                     Operators.equalFloats(left.getDiscreteFloatSample(), right.getDiscreteFloatSample())
             );
         }
@@ -200,8 +251,8 @@ public class Runtime {
             );
         }
 
-        if ((isDiscreteFloatSample(left) && hasSingleValue(left.getDiscreteFloatSample()) && isContinuousSample(right)) ||
-                (isDiscreteFloatSample(right) && hasSingleValue(right.getDiscreteFloatSample()) && isContinuousSample(left))) {
+        if ((isDiscreteFloatSample(left) && isContinuousSample(right)) ||
+                (isDiscreteFloatSample(right) && isContinuousSample(left))) {
             return new RuntimeValue(
                     RuntimeValue.Type.DISCRETE_FLOAT_SAMPLE,
                     DiscreteSample.create(0f)
@@ -211,70 +262,87 @@ public class Runtime {
         throw new RuntimeException("Comparing incompatible types");
     }
 
+    /**
+     * Checks if left operand is less than the right. Represents the less than operator.
+     * @param left Left operand value
+     * @param right Right operand value
+     * @return Boolean or float discrete sample
+     */
     public static RuntimeValue lessThan(RuntimeValue left, RuntimeValue right) throws RuntimeException {
         if (isDiscreteIntSamples(left, right)) {
             return new RuntimeValue(
-                    RuntimeValue.Type.DISCRETE_INT_SAMPLE,
+                    RuntimeValue.Type.DISCRETE_BOOL_SAMPLE,
                     Operators.lessThanIntegers(left.getDiscreteIntSample(), right.getDiscreteIntSample())
             );
         }
 
         if (isDiscreteFloatSamples(left, right)) {
             return new RuntimeValue(
-                    RuntimeValue.Type.DISCRETE_FLOAT_SAMPLE,
+                    RuntimeValue.Type.DISCRETE_BOOL_SAMPLE,
                     Operators.lessThanFloats(left.getDiscreteFloatSample(), right.getDiscreteFloatSample())
             );
         }
 
-        if (isDiscreteFloatSample(right) && hasSingleValue(right.getDiscreteFloatSample()) && isContinuousSample(left)) {
+        if (isDiscreteFloatSample(right) && isContinuousSample(left)) {
             return new RuntimeValue(
                     RuntimeValue.Type.DISCRETE_BOOL_SAMPLE,
                     Operators.lessThanContinuous(left.getContinuousSample(), right.getDiscreteFloatSample())
             );
         }
 
-        if (isDiscreteFloatSample(left) && hasSingleValue(left.getDiscreteFloatSample()) && isContinuousSample(right)) {
+        if (isDiscreteFloatSample(left) && isContinuousSample(right)) {
             return new RuntimeValue(
                     RuntimeValue.Type.DISCRETE_BOOL_SAMPLE,
-                    Operators.not(Operators.lessThanContinuous(left.getContinuousSample(), right.getDiscreteFloatSample()))
+                    Operators.not(Operators.lessThanContinuous(right.getContinuousSample(), left.getDiscreteFloatSample()))
             );
         }
 
         throw new RuntimeException("Comparing incompatible types");
     }
 
+    /**
+     * Checks if left operand is greater than the right. Represents the greater than operator.
+     * @param left Left operand value
+     * @param right Right operand value
+     * @return Boolean or float discrete sample
+     */
     public static RuntimeValue greaterThan(RuntimeValue left, RuntimeValue right) throws RuntimeException {
         if (isDiscreteIntSamples(left, right)) {
             return new RuntimeValue(
-                    RuntimeValue.Type.DISCRETE_INT_SAMPLE,
+                    RuntimeValue.Type.DISCRETE_BOOL_SAMPLE,
                     Operators.greaterThanIntegers(left.getDiscreteIntSample(), right.getDiscreteIntSample())
             );
         }
 
         if (isDiscreteFloatSamples(left, right)) {
             return new RuntimeValue(
-                    RuntimeValue.Type.DISCRETE_FLOAT_SAMPLE,
+                    RuntimeValue.Type.DISCRETE_BOOL_SAMPLE,
                     Operators.greaterThanFloats(left.getDiscreteFloatSample(), right.getDiscreteFloatSample())
             );
         }
 
-        if (isDiscreteFloatSample(right) && hasSingleValue(right.getDiscreteFloatSample()) && isContinuousSample(left)) {
+        if (isDiscreteFloatSample(right) && isContinuousSample(left)) {
             return new RuntimeValue(
                     RuntimeValue.Type.DISCRETE_BOOL_SAMPLE,
                     Operators.not(Operators.lessThanContinuous(left.getContinuousSample(), right.getDiscreteFloatSample()))
             );
         }
 
-        if (isDiscreteFloatSample(left) && hasSingleValue(left.getDiscreteFloatSample()) && isContinuousSample(right)) {
+        if (isDiscreteFloatSample(left) && isContinuousSample(right)) {
             return new RuntimeValue(
                     RuntimeValue.Type.DISCRETE_BOOL_SAMPLE,
-                    Operators.lessThanContinuous(left.getContinuousSample(), right.getDiscreteFloatSample())
+                    Operators.lessThanContinuous(right.getContinuousSample(), left.getDiscreteFloatSample())
             );
         }
 
         throw new RuntimeException("Comparing incompatible types");
     }
 
+    /**
+     * Creates a Bernoulli distribution
+     * @param p Probability value
+     * @return Bernoulli distribution
+     */
     public static RuntimeValue bernoulli(RuntimeValue p) throws RuntimeException {
         if (isDiscreteFloatSample(p) && hasSingleValue(p.getDiscreteFloatSample())) {
             return new RuntimeValue(
@@ -286,6 +354,12 @@ public class Runtime {
         throw new RuntimeException("Unable to create Bernoulli distribution");
     }
 
+    /**
+     * Creates a Beta distribution
+     * @param a Pseudocount a
+     * @param b Pseudocount b
+     * @return Beta distribution
+     */
     public static RuntimeValue beta(RuntimeValue a, RuntimeValue b) throws RuntimeException {
         if (isDiscreteFloatSample(a) && hasSingleValue(a.getDiscreteFloatSample()) &&
                 isDiscreteFloatSample(b) && hasSingleValue(b.getDiscreteFloatSample())) {
@@ -298,6 +372,12 @@ public class Runtime {
         throw new RuntimeException("Unable to create Beta distribution");
     }
 
+    /**
+     * Creates a Normal distribution
+     * @param m Mean
+     * @param sd Standard deviation
+     * @return Normal distribution
+     */
     public static RuntimeValue normal(RuntimeValue m, RuntimeValue sd) throws RuntimeException {
         if (isDiscreteFloatSample(m) && hasSingleValue(m.getDiscreteFloatSample()) &&
                 isDiscreteFloatSample(sd) && hasSingleValue(sd.getDiscreteFloatSample())) {
@@ -310,6 +390,11 @@ public class Runtime {
         throw new RuntimeException("Unable to create Normal distribution");
     }
 
+    /**
+     * Creates a Flip distribution
+     * @param p Probability value
+     * @return Flip distribution
+     */
     public static RuntimeValue flip(RuntimeValue p) throws RuntimeException {
         if (isDiscreteFloatSample(p) && hasSingleValue(p.getDiscreteFloatSample())) {
             return new RuntimeValue(
@@ -321,6 +406,11 @@ public class Runtime {
         throw new RuntimeException("Unable to create Flip distribution");
     }
 
+    /**
+     * Creates a sample of a distribution
+     * @param value Distribution value
+     * @return Discrete integer or boolean sample, or continuous sample
+     */
     public static RuntimeValue sample(RuntimeValue value) throws RuntimeException {
         if (isDistribution(value)) {
             Distribution distribution = value.getDistribution();
@@ -350,6 +440,12 @@ public class Runtime {
         throw new RuntimeException("Unable to sample value");
     }
 
+    /**
+     * Observes a sample. If the sample is true, returns the result value. If it is false, throws runtime exception.
+     * @param sample Sample to observe
+     * @param result Result if observation is true
+     * @return Result value
+     */
     public static RuntimeValue observe(RuntimeValue sample, RuntimeValue result) throws RuntimeException {
         System.out.printf("%s %s\n", sample.getType(), result.getType());
 

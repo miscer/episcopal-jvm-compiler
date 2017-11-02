@@ -1,10 +1,14 @@
 package episcopal.runtime;
 
 import episcopal.Distribution;
-import episcopal.Sample;
 import episcopal.continuous.ContinuousSample;
 import episcopal.discrete.DiscreteSample;
 
+/**
+ * Represents a runtime value. It can contain a discrete or continuous sample, or a distribution. A separate class is
+ * needed because we cannot use the instanceof operator to check the type of a discrete distribution, because of Java's
+ * type erasure.
+ */
 public class RuntimeValue {
     public enum Type {
         DISCRETE_BOOL_SAMPLE,
