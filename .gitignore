@@ -1,5 +1,9 @@
 out
+*.jar
 
 *.hi
 *.o
 *.j
+
+*.tex
+*.pdf

@@ -447,8 +447,6 @@ public class Runtime {
      * @return Result value
      */
     public static RuntimeValue observe(RuntimeValue sample, RuntimeValue result) throws RuntimeException {
-        System.out.printf("%s %s\n", sample.getType(), result.getType());
-
         if (isDiscreteBoolSample(sample)) {
             Boolean value = Observations.select(sample.getDiscreteBoolSample());
 

@@ -53,6 +53,8 @@ data Function
   -- | of parameters, the expression and the environment of the let expression
   -- | that defined it. The expression is copied when the local function is called.
   | LocalFunction Id [Id] Expression Environment
+  -- | Parameter of a query function with the name and index (first argument = 1)
+  | QueryParameter Id Int
     deriving (Show)
 
 -- | Expression environment, containing the program name and the list of
@@ -69,6 +71,7 @@ programEnvironment (Program name _ queries) = Environment name functions
 lookupFunction :: Id -> Environment -> Maybe Function
 lookupFunction id (Environment _ functions) = find match functions
   where match (QueryFunction name _) = name == id
+        match (QueryParameter name _) = name == id
         match (LocalFunction name _ _ _) = name == id
 
 -- | Instruction is a function that modifies an output. It usually adds an
@@ -149,11 +152,14 @@ queryMethods program@(Program _ _ queries) = concat $ map (queryMethod program) 
 -- | Generates a method for the program query
 -- | The method evaluates the query's expression and returns the resulting value
 queryMethod :: Program -> Query -> [Line]
-queryMethod program (Query name parameters body) = compileMethod methodPrototype methodLocals methodBody
-  where methodPrototype = method name (length parameters) -- method prototype with the query's name and number of parameters
-        methodLocals = (length parameters) + 1 -- we need locals for each argument, plus one for this
-        methodBody = exec [compileExpression (head body) (programEnvironment program), -- compile the query's expression using the program scope
-                           instr (jinstr "areturn") (shrinkStack 1)] -- return the resulting value
+queryMethod program (Query qname parameters expressions) = compileMethod prototype locals body
+  where prototype = method qname (length parameters) -- method prototype with the query's name and number of parameters
+        locals = (length parameters) + 1 -- we need locals for each argument, plus one for this
+        body = exec [compileExpression (head expressions) environment, -- compile the query's expression using the query environment
+                     instr (jinstr "areturn") (shrinkStack 1)] -- return the resulting value
+        environment = Environment pname functions' -- query environment contains all program queries plus query parameters
+        functions' = [QueryParameter fname index | (fname, index) <- zip parameters [1..]] ++ functions
+        (Environment pname functions) = programEnvironment program
 
 -- | Generates the run method
 -- | This method executes the program's expression and returns its value
@@ -239,11 +245,11 @@ compileOperator operator = instr instruction (expandStack 1 . shrinkStack 2)
 compileDistribution :: Distribution -> Environment -> Instruction
 compileDistribution (Bernoulli p) env = exec [compileExpression p env,
                                               instr (jinstrargs "invokestatic" [show (method "episcopal/runtime/Runtime/bernoulli" 1)]) (expandStack 1 . shrinkStack 1)]
-compileDistribution (Beta a b) env = exec [compileExpression b env,
-                                           compileExpression a env,
+compileDistribution (Beta a b) env = exec [compileExpression a env,
+                                           compileExpression b env,
                                            instr (jinstrargs "invokestatic" [show (method "episcopal/runtime/Runtime/beta" 2)]) (expandStack 1 . shrinkStack 2)]
-compileDistribution (Normal m sd) env = exec [compileExpression sd env,
-                                              compileExpression m env,
+compileDistribution (Normal m sd) env = exec [compileExpression m env,
+                                              compileExpression sd env,
                                               instr (jinstrargs "invokestatic" [show (method "episcopal/runtime/Runtime/normal" 2)]) (expandStack 1 . shrinkStack 2)]
 compileDistribution (Flip p) env = exec [compileExpression p env,
                                          instr (jinstrargs "invokestatic" [show (method "episcopal/runtime/Runtime/flip" 1)]) id]
@@ -260,6 +266,7 @@ compileCall :: Id -- | Name of the function
 compileCall name arguments env = case lookupFunction name env of -- try to find the function by its name
                                    (Just function) -> case function of -- function exists
                                      (QueryFunction _ _) -> compileQueryCall function arguments env
+                                     (QueryParameter _ _) -> compileQueryParameter function
                                      (LocalFunction _ _ _ _) -> compileLocalCall function arguments env
                                    Nothing -> error $ "Function " ++ name ++ " does not exist" -- function does not exist
 
@@ -268,13 +275,19 @@ compileQueryCall :: Function -- | Query function
                  -> [Expression] -- | Arguments for the function
                  -> Environment -- | Current environment
                  -> Instruction
-compileQueryCall function arguments env = exec [operands, object, call] -- load function operands and this onto the stack, call the method
+compileQueryCall function arguments env = exec [object, operands, call] -- load function operands and this onto the stack, call the method
   where operands = exec [compileExpression argument env | argument <- arguments] -- compile expression of each argument
         object = instr (jinstr "aload_0") (expandStack 1) -- load this onto the stack
         call = instr (jinstrargs "invokevirtual" [show query]) (expandStack 1 . shrinkStack 1) -- call the query method
         query = method (program ++ "/" ++ name) arity -- query method is defined in the program class
         (QueryFunction name arity) = function
         (Environment program _) = env
+
+-- | Compiles a call to the specified query parameter
+compileQueryParameter :: Function -- | Query parameter
+                      -> Instruction
+compileQueryParameter function = instr (jinstrargs "aload" [show index]) (expandStack 1) -- load local variable onto the stack
+  where (QueryParameter _ index) = function
 
 -- | Compiles a call to the specified local function
 compileLocalCall :: Function  -- | Local function
