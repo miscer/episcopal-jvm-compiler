@@ -254,8 +254,8 @@ public class Runtime {
         if ((isDiscreteFloatSample(left) && isContinuousSample(right)) ||
                 (isDiscreteFloatSample(right) && isContinuousSample(left))) {
             return new RuntimeValue(
-                    RuntimeValue.Type.DISCRETE_FLOAT_SAMPLE,
-                    DiscreteSample.create(0f)
+                    RuntimeValue.Type.DISCRETE_BOOL_SAMPLE,
+                    new DiscreteSample<Boolean>().add(false, 1).add(true, 0)
             );
         }
 

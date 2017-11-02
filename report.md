@@ -9,16 +9,89 @@ toc: true
 
 ## Distributions and samples
 
-Discrete distributions and samples
+Episcopal supports two types of distributions: discrete and continuous.
 
-Continuous distributions and samples
+The Flip and Bernoulli distributions are discrete. This means that they contain a finite set of values with their corresponding probabilities, for example:
 
-Operators
-- adding/comparing two discrete samples
-- adding continuous samples
-- comparing continuous samples (equal, less than, greater than)
+- 60% 100
+- 20% 200
+- 10% 300
+- 10% 400
 
-Observations
+When a discrete distribution is sampled, these values are captured in a _discrete sample_. This contains all values of the distribution with their probabilities. We can query the sample for the probability of a specific value, and for all values in the sample.
+
+The Flip distribution with probability $p$ generates a sample containing `true` with probability $p$ and `false` with probability $1 - p$. Similarly the Bernoulli distribution contains values 0 and 1.
+
+The other two distributions, Normal and Beta are continuous distributions. They do not contain any specific values, and the probability of a specific value is 0%. When these distributions are sampled, a _continuous sample_ is created. It does not contain any specific values, we can however query for the _cumulative probability_ of a certain value, i.e. the probability of a value occurring that less than or equal to the value.
+
+A cumulative sample contains two boolean values - `true` with the cumulative probability $p$, and `false` with probability $1 - p$.
+
+## Constants
+
+Every constant in the program is turned into a discrete sample that contains the constant with 100% probability. This allows us to handle constants the same way as samples from distributions, simplifying the design and leading to some interesting properties of operators.
+
+## Operators
+
+My implementation supports all the required operators. Some of them have a special meaning in some contexts.
+
+The arithmetic (plus, minus, times, over) and logic (and, or) operators work on constants as expected, e.g. `1 + 2 = 3`. Internally, the 1 and 2 in the expression are stored as two discrete samples, as described above.
+
+The operators take values from both samples, calculate the probability of each combination of values occurring, and create a new sample containing the results of the operators. Let's take two samples for example:
+
+- 10 (40%), 20 (60%)
+- 30 (30%), 40 (70%)
+
+When we add them, we calculate the probability of each combination of values:
+
+- 10 + 30 ($40% \times 30%$)
+- 10 + 40 ($40% \times 70%$)
+- 20 + 30 ($60% \times 30%$)
+- 20 + 40 ($60% \times 70%$)
+
+And the resulting sample is:
+
+- 40 (12%), 50 (46%), 60 (42%)
+
+Arithmetic operators can be used only on values of the same type, i.e. integers with integers, and floats with floats.
+
+We can also use arithmetic operators on discrete and continuous samples. The limitation is that the discrete sample can have only one value. This is used to shift and scale the continuous sample. For example, if we have a continuous sample that for value 10 gives cumulative probability 30%, and we add 3 to the sample and multiply it by 2, it will now give the same probability for the value 23 ($10 \times 2 + 3$).
+
+The comparison operators (equals, less than, greater than) can be used with discrete samples the same way as arithmetic and logic operators. The result is a discrete sample containing boolean values.
+
+We can also use these operators with continuous samples. This is where the cumulative probability comes into play - if we compare a continuous sample with a discrete sample, it will calculate the cumulative probability for each value in the discrete sample. For example, if we have two samples:
+
+- Sample $A$ of normal distribution with $m = 100$ and $sd = 15$
+- Discrete sample $B$ with values 70 (30%), and 130 (70%)
+
+The result of $A < B$ will be the combination of cumulative probabilities for 70 and 130 with the correct probabilities calculated.
+
+The cumulative probability of 70 is 2.2%, the probability of a 70 occurring is 30%, cumulative probability of 130 is 97.7% and the probability of it occurring is 70%. Adding that up we get the discrete sample
+
+- true ($2.2 * 30 + 97.7 * 70 = 69%$), false ($97.8 * 30 + 2.3 * 70 = 31%$)
+
+The greater than operator is simply a negation of the less than operator when comparing continuous samples. The equals operator will always return false with 100% probability, as the probability of a specific value in a continuous distribution is 0%.
+
+## Observations
+
+Only a sample can be observed, and only a distribution can be sampled. This is because a sample represents all values in the distribution, even if it is continuous.
+
+Observing a sample should choose one value from it, but since there are multiple values in the sample, I decided to choose one value from the sample randomly. The probabilities in the sample are taken into consideration - e.g. if one value has 90% probability, it will be chosen randomly 90% of the time.
+
+I understood the observe expression as a form of an if statement: If the observation is true, execute the observation expression. This means that the observed sample has to be a discrete sample of boolean values - any other value will throw a runtime error.
+
+When a discrete boolean sample is observed, either true or false is chosen from it. If true is chosen, the expression is executed. If false is chosen, a runtime error is thrown and the program is invalid. For example, this program will return 123 with 60% probability, otherwise it will be invalid:
+
+```
+episcopal obs = observe (sample (Flip 60%)) = True in 123
+```
+
+We can also use continuous distributions:
+
+```
+episcopal obs = observe (sample (Normal 10 5)) < 10 in 456
+```
+
+This will result in 456 with 50% probability, since the cumulative probability of 10 in the distribution is 50%.
 
 ## Abstract syntax
 
@@ -70,6 +143,16 @@ The `Runtime` class then executes methods in the standard library based on the t
 The generated bytecode is then kept clean and readable by containing mostly calls to methods of the `Runtime` class.
 
 # Testing
+
+## Compiler
+
+I wrote a number of Haskell programs that construct an AST and pass it onto the compiler, printing out the result. When these programs are run and their output is compiled with Jasmin, they can be executed to check that the result is correct.
+
+## Standard library
+
+The classes in the standard library have unit tests defined for their methods. I am using JUnit 4. These tests check that the library is behaving correctly in various cases.
+
+For example, the `DiscreteSample` class is checked to make sure it calculates probabilities correctly, the `Operators` class that it combines discrete samples or that observations return a single value from a sample.
 
 # Extensions
 

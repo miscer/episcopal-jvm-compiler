@@ -15,6 +15,16 @@ public class DiscreteSampleTest {
     }
 
     @Test
+    public void add() throws Exception {
+        DiscreteSample<Integer> s = new DiscreteSample<>();
+        s.add(123, 0.2f);
+        s.add(123, 0.4f);
+        s.add(456, 0.4f);
+
+        assertEquals(0.6f, s.get(123), 0.1f);
+    }
+
+    @Test
     public void values() throws Exception {
         DiscreteSample<Integer> s = new DiscreteSample<>();
         s.add(123, 0.3f);
