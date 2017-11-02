@@ -43,6 +43,20 @@ public class Runtime {
             );
         }
 
+        if (isDiscreteFloatSample(left) && hasSingleValue(left.getDiscreteFloatSample()) && isContinuousSample(right)) {
+            return new RuntimeValue(
+                    RuntimeValue.Type.CONTINUOUS_SAMPLE,
+                    right.getContinuousSample().add(left.getDiscreteFloatSample().single())
+            );
+        }
+
+        if (isDiscreteFloatSample(right) && hasSingleValue(right.getDiscreteFloatSample()) && isContinuousSample(left)) {
+            return new RuntimeValue(
+                    RuntimeValue.Type.CONTINUOUS_SAMPLE,
+                    left.getContinuousSample().add(right.getDiscreteFloatSample().single())
+            );
+        }
+
         throw new RuntimeException("Adding incompatible types");
     }
 
@@ -58,6 +72,20 @@ public class Runtime {
             return new RuntimeValue(
                     RuntimeValue.Type.DISCRETE_FLOAT_SAMPLE,
                     Operators.subtractFloats(left.getDiscreteFloatSample(), right.getDiscreteFloatSample())
+            );
+        }
+
+        if (isDiscreteFloatSample(left) && hasSingleValue(left.getDiscreteFloatSample()) && isContinuousSample(right)) {
+            return new RuntimeValue(
+                    RuntimeValue.Type.CONTINUOUS_SAMPLE,
+                    right.getContinuousSample().add(-1 * left.getDiscreteFloatSample().single())
+            );
+        }
+
+        if (isDiscreteFloatSample(right) && hasSingleValue(right.getDiscreteFloatSample()) && isContinuousSample(left)) {
+            return new RuntimeValue(
+                    RuntimeValue.Type.CONTINUOUS_SAMPLE,
+                    left.getContinuousSample().add(-1 * right.getDiscreteFloatSample().single())
             );
         }
 
@@ -79,6 +107,20 @@ public class Runtime {
             );
         }
 
+        if (isDiscreteFloatSample(left) && hasSingleValue(left.getDiscreteFloatSample()) && isContinuousSample(right)) {
+            return new RuntimeValue(
+                    RuntimeValue.Type.CONTINUOUS_SAMPLE,
+                    right.getContinuousSample().multiply(left.getDiscreteFloatSample().single())
+            );
+        }
+
+        if (isDiscreteFloatSample(right) && hasSingleValue(right.getDiscreteFloatSample()) && isContinuousSample(left)) {
+            return new RuntimeValue(
+                    RuntimeValue.Type.CONTINUOUS_SAMPLE,
+                    left.getContinuousSample().multiply(right.getDiscreteFloatSample().single())
+            );
+        }
+
         throw new RuntimeException("Multiplying incompatible types");
     }
 
@@ -94,6 +136,20 @@ public class Runtime {
             return new RuntimeValue(
                     RuntimeValue.Type.DISCRETE_FLOAT_SAMPLE,
                     Operators.divideFloats(left.getDiscreteFloatSample(), right.getDiscreteFloatSample())
+            );
+        }
+
+        if (isDiscreteFloatSample(left) && hasSingleValue(left.getDiscreteFloatSample()) && isContinuousSample(right)) {
+            return new RuntimeValue(
+                    RuntimeValue.Type.CONTINUOUS_SAMPLE,
+                    right.getContinuousSample().multiply(1 / left.getDiscreteFloatSample().single())
+            );
+        }
+
+        if (isDiscreteFloatSample(right) && hasSingleValue(right.getDiscreteFloatSample()) && isContinuousSample(left)) {
+            return new RuntimeValue(
+                    RuntimeValue.Type.CONTINUOUS_SAMPLE,
+                    left.getContinuousSample().multiply(1 / right.getDiscreteFloatSample().single())
             );
         }
 
@@ -144,6 +200,14 @@ public class Runtime {
             );
         }
 
+        if ((isDiscreteFloatSample(left) && hasSingleValue(left.getDiscreteFloatSample()) && isContinuousSample(right)) ||
+                (isDiscreteFloatSample(right) && hasSingleValue(right.getDiscreteFloatSample()) && isContinuousSample(left))) {
+            return new RuntimeValue(
+                    RuntimeValue.Type.DISCRETE_FLOAT_SAMPLE,
+                    DiscreteSample.create(0f)
+            );
+        }
+
         throw new RuntimeException("Comparing incompatible types");
     }
 
@@ -162,6 +226,20 @@ public class Runtime {
             );
         }
 
+        if (isDiscreteFloatSample(right) && hasSingleValue(right.getDiscreteFloatSample()) && isContinuousSample(left)) {
+            return new RuntimeValue(
+                    RuntimeValue.Type.DISCRETE_BOOL_SAMPLE,
+                    Operators.lessThanContinuous(left.getContinuousSample(), right.getDiscreteFloatSample())
+            );
+        }
+
+        if (isDiscreteFloatSample(left) && hasSingleValue(left.getDiscreteFloatSample()) && isContinuousSample(right)) {
+            return new RuntimeValue(
+                    RuntimeValue.Type.DISCRETE_BOOL_SAMPLE,
+                    Operators.not(Operators.lessThanContinuous(left.getContinuousSample(), right.getDiscreteFloatSample()))
+            );
+        }
+
         throw new RuntimeException("Comparing incompatible types");
     }
 
@@ -177,6 +255,20 @@ public class Runtime {
             return new RuntimeValue(
                     RuntimeValue.Type.DISCRETE_FLOAT_SAMPLE,
                     Operators.greaterThanFloats(left.getDiscreteFloatSample(), right.getDiscreteFloatSample())
+            );
+        }
+
+        if (isDiscreteFloatSample(right) && hasSingleValue(right.getDiscreteFloatSample()) && isContinuousSample(left)) {
+            return new RuntimeValue(
+                    RuntimeValue.Type.DISCRETE_BOOL_SAMPLE,
+                    Operators.not(Operators.lessThanContinuous(left.getContinuousSample(), right.getDiscreteFloatSample()))
+            );
+        }
+
+        if (isDiscreteFloatSample(left) && hasSingleValue(left.getDiscreteFloatSample()) && isContinuousSample(right)) {
+            return new RuntimeValue(
+                    RuntimeValue.Type.DISCRETE_BOOL_SAMPLE,
+                    Operators.lessThanContinuous(left.getContinuousSample(), right.getDiscreteFloatSample())
             );
         }
 
@@ -284,6 +376,10 @@ public class Runtime {
 
     private static boolean isDiscreteBoolSample(RuntimeValue value) {
         return value.getType() == RuntimeValue.Type.DISCRETE_BOOL_SAMPLE;
+    }
+
+    private static boolean isContinuousSample(RuntimeValue value) {
+        return value.getType() == RuntimeValue.Type.CONTINUOUS_SAMPLE;
     }
 
     private static boolean isDistribution(RuntimeValue value) {

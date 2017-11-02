@@ -3,8 +3,8 @@ import Compiler
 
 main = putStr $ unlines $ compile program
 
-program = Program "operators3" body []
-  where body = ExpOp OpLessThan
+program = Program "continuoussample2" body []
+  where body = ExpOp OpEqual
     (ExpConst (ConstFloat 5.5))
     (ExpSample
       (ExpDist (Normal
