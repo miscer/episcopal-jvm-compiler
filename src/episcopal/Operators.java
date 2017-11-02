@@ -69,7 +69,7 @@ public class Operators {
         return combine(left, right, (a, b) -> a < b);
     }
 
-    public static DiscreteSample<Boolean> lessThanFloats(ContinuousSample left, DiscreteSample<Float> right) {
+    public static DiscreteSample<Boolean> lessThanContinuous(ContinuousSample left, DiscreteSample<Float> right) {
         DiscreteSample<Boolean> result = new DiscreteSample<Boolean>();
 
         for (Float a : right.values()) {
